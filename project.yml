@@ -1,0 +1,41 @@
+# XcodeGen project specification
+# Regenerate with: xcodegen
+
+name: BYOK
+options:
+  bundleIdPrefix: cc.n0m3rci.byok
+  deploymentTarget:
+    iOS: "16.0"
+  xcodeVersion: "15.0"
+
+settings:
+  base:
+    IPHONEOS_DEPLOYMENT_TARGET: "16.0"
+    SWIFT_VERSION: "5.9"
+    SWIFT_STRICT_CONCURRENCY: "complete"
+
+targets:
+  BYOK:
+    type: application
+    platform: iOS
+    sources:
+      - BYOK
+    settings:
+      base:
+        INFOPLIST_FILE: BYOK/Info.plist
+        PRODUCT_BUNDLE_IDENTIFIER: cc.n0m3rci.byok
+        PRODUCT_NAME: "M3RCI - UniMind"
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        SUPPORTED_PLATFORMS: "iphoneos iphonesimulator"
+        TARGETED_DEVICE_FAMILY: "1,2"
+    info:
+      path: BYOK/Info.plist
+      properties:
+        UILaunchScreen:
+          UIColorName: "LaunchScreenBackground"
+        CFBundleDisplayName: "M3RCI"
+        UIRequiredDeviceCapabilities:
+          - arm64
+        NSFaceIDUsageDescription: "M3RCI uses Face ID to unlock the app securely."
+        UIApplicationSupportsIndirectInputEvents: true
+    dependencies: []
