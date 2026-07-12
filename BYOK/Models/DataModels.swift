@@ -217,12 +217,12 @@ struct ToolCallInfo: Identifiable, Equatable {
 }
 
 // MARK: - SSE Event
-struct SSEEvent: Codable {
+struct SSEEvent: Codable, @unchecked Sendable {
     let step: String
     let data: SSEEventData?
 }
 
-struct SSEEventData: Codable {
+struct SSEEventData: Codable, @unchecked Sendable {
     let content: String?
     let taskId: String?
     let tool: String?

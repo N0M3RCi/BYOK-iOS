@@ -27,7 +27,7 @@ final class RemoteControlViewModel: ObservableObject {
             let _: RemoteDevice = try await apiClient.apiRequest(
                 method: "POST", path: "/remote-control/pair", body: body
             )
-            await loadDevices()
+            loadDevices()
         } catch { errorMessage = error.localizedDescription }
     }
 
@@ -36,7 +36,7 @@ final class RemoteControlViewModel: ObservableObject {
             let _: EmptyResponse = try await apiClient.apiRequest(
                 method: "DELETE", path: "/remote-control/device/\(id)"
             )
-            await loadDevices()
+            loadDevices()
         } catch { errorMessage = error.localizedDescription }
     }
 
