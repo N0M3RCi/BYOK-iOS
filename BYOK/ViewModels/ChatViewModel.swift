@@ -14,6 +14,7 @@ final class ChatViewModel: ObservableObject {
     @Published var currentProjectID: String?
     @Published var currentTaskID: String?
     @Published var showReasoning = false
+    @Published var attachedFiles: [String] = []
 
     private let apiClient = APIClient.shared
     private let keychain = KeychainManager.shared
@@ -194,7 +195,7 @@ final class ChatViewModel: ObservableObject {
         // Call DELETE /chat/{id}
         if let projectID = currentProjectID {
             Task {
-                try? await apiClient.brainDelete(path: "/chat/\(projectID)")
+                try? await apiClient.brainDelete(path: "/chat/\(projectID)") as EmptyResponse
             }
         }
     }
@@ -216,7 +217,7 @@ final class ChatViewModel: ObservableObject {
 
     func uploadFile(data: Data, filename: String) async {
         do {
-            let response = try await apiClient.uploadFile(data: data, filename: filename)
+            let _ = try await apiClient.uploadFile(data: data, filename: filename)
             // Attach file reference to next message
         } catch {
             errorMessage = "Upload failed: \(error.localizedDescription)"
