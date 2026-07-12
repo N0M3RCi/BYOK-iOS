@@ -197,6 +197,10 @@ final class APIClient: @unchecked Sendable {
         try await brainRequest(method: "PUT", path: path, body: body)
     }
 
+    func getRemoteSubAgentProviders() async throws -> [RemoteSubAgentProvider] {
+        try await brainGet(path: "/remote-subagents/providers")
+    }
+
     // MARK: - Multipart Upload
 
     func uploadFile(data: Data, filename: String) async throws -> FileUploadResponse {

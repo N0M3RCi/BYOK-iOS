@@ -635,42 +635,31 @@ struct ProjectSpace: Codable, Identifiable, Equatable {
 }
 
 // MARK: - Remote SubAgent Provider
-final class RemoteSubAgentProvider: ObservableObject, @unchecked Sendable {
-    static let shared = RemoteSubAgentProvider()
+struct RemoteSubAgentProvider: Codable, Identifiable, Equatable {
+    let id: String
+    let name: String
+    let type: String?
+    let description: String?
+    let endpoint: String?
+    let apiKey: String?
+    let createdAt: String?
 
-    @Published var availableAgents: [Agent] = []
-    @Published var isLoading = false
-    @Published var errorMessage: String?
-
-    private let apiClient = APIClient.shared
-
-    private init() {}
-
-    func fetchAgents() async {
-        isLoading = true
-        defer { isLoading = false }
-        do {
-            let agents: [Agent] = try await apiClient.brainGet(path: "/agents")
-            await MainActor.run { availableAgents = agents }
-        } catch {
-            await MainActor.run { errorMessage = error.localizedDescription }
-        }
+    enum CodingKeys: String, CodingKey {
+        case id, name, type, description, endpoint
+        case apiKey = "api_key"
+        case createdAt = "created_at"
     }
+}
 
-    func createAgent(name: String, description: String, tools: [String]) async -> Agent? {
-        do {
-            let body: [String: AnyEncodable] = [
-                "name": AnyEncodable(name),
-                "description": AnyEncodable(description),
-                "tools": AnyEncodable(tools)
-            ]
-            let agent: Agent = try await apiClient.brainPost(path: "/agents", body: body)
-            await fetchAgents()
-            return agent
-        } catch {
-            await MainActor.run { errorMessage = error.localizedDescription }
-            return nil
-        }
+// MARK: - Remote SubAgent Validate Request
+struct RemoteSubAgentValidateRequest: Codable {
+    let name: String
+    let endpoint: String
+    let apiKey: String?
+
+    enum CodingKeys: String, CodingKey {
+        case name, endpoint
+        case apiKey = "api_key"
     }
 }
 
