@@ -7,6 +7,9 @@ final class AgentsViewModel: ObservableObject {
     @Published var mcpServers: [MCPServer] = []
     @Published var isLoading = false
     @Published var errorMessage: String?
+    @Published var showImportSkill = false
+    @Published var showInstallMCP = false
+    @Published var newMCPName = ""
 
     private let apiClient = APIClient.shared
 
