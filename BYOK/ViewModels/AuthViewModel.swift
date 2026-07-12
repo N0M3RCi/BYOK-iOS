@@ -7,6 +7,7 @@ final class AuthViewModel: ObservableObject {
     enum AuthState: Equatable {
         case unknown
         case needsPasscode
+        case needsSignUp
         case authenticated
     }
 
