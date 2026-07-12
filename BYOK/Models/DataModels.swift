@@ -566,7 +566,7 @@ struct Channel: Codable, Identifiable, Equatable {
     let name: String
     let type: String?
     let description: String?
-    let enabled: Bool?
+    var enabled = false
     let memberCount: Int?
     let createdAt: String?
     let lastActivityAt: String?
@@ -576,6 +576,18 @@ struct Channel: Codable, Identifiable, Equatable {
         case memberCount = "member_count"
         case createdAt = "created_at"
         case lastActivityAt = "last_activity_at"
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(String.self, forKey: .id)
+        name = try container.decode(String.self, forKey: .name)
+        type = try container.decodeIfPresent(String.self, forKey: .type)
+        description = try container.decodeIfPresent(String.self, forKey: .description)
+        enabled = try container.decodeIfPresent(Bool.self, forKey: .enabled) ?? false
+        memberCount = try container.decodeIfPresent(Int.self, forKey: .memberCount)
+        createdAt = try container.decodeIfPresent(String.self, forKey: .createdAt)
+        lastActivityAt = try container.decodeIfPresent(String.self, forKey: .lastActivityAt)
     }
 }
 
@@ -677,5 +689,17 @@ struct TaskExecution: Codable, Identifiable, Equatable {
         case projectId = "project_id"
         case startedAt = "started_at"
         case completedAt = "completed_at"
+    }
+}
+
+// MARK: - Create Project Request
+struct CreateProjectRequest: Codable {
+    let name: String
+    let spaceId: String
+    let description: String?
+
+    enum CodingKeys: String, CodingKey {
+        case name, description
+        case spaceId = "space_id"
     }
 }
