@@ -655,7 +655,7 @@ struct RemoteSubAgentProvider: Codable, Identifiable, Equatable {
 struct RemoteSubAgentValidateRequest: Codable {
     let platform: String
     let apiUrl: String
-    let apiKey: String
+    let apiKey: String?
 
     enum CodingKeys: String, CodingKey {
         case platform
