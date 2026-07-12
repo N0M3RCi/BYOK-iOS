@@ -1,0 +1,117 @@
+import SwiftUI
+
+struct SubAgentsView: View {
+    @State private var providers: [RemoteSubAgentProvider] = []
+    @State private var isLoading = true
+    @State private var errorMessage: String?
+    @State private var showAddProvider = false
+    @State private var providerName = ""
+    @State private var providerPlatform = "claude"
+    @State private var providerApiUrl = ""
+    @State private var providerApiKey = ""
+
+    var body: some View {
+        List {
+            Section("Remote Sub-Agent Providers") {
+                if isLoading {
+                    HStack { Spacer(); ProgressView(); Spacer() }
+                } else if providers.isEmpty {
+                    Text("No remote sub-agent providers configured")
+                        .foregroundColor(.secondary)
+                } else {
+                    ForEach(providers) { provider in
+                        HStack {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(provider.name)
+                                    .font(.subheadline)
+                                    .fontWeight(.medium)
+                                Text(provider.platform)
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                            Spacer()
+                            if provider.isOnline {
+                                Image(systemName: "checkmark.circle.fill")
+                                    .foregroundColor(.green)
+                                    .font(.caption)
+                            } else {
+                                Image(systemName: "xmark.circle")
+                                    .foregroundColor(.red)
+                                    .font(.caption)
+                            }
+                        }
+                    }
+                }
+            }
+
+            Section {
+                Button("Add Provider") {
+                    showAddProvider = true
+                }
+            }
+        }
+        .navigationTitle("Sub-Agents")
+        .sheet(isPresented: $showAddProvider) {
+            NavigationStack {
+                Form {
+                    Section("Provider Details") {
+                        TextField("Name", text: $providerName)
+                        Picker("Platform", selection: $providerPlatform) {
+                            Text("Claude").tag("claude")
+                            Text("OpenAI").tag("openai")
+                            Text("Custom").tag("custom")
+                        }
+                        TextField("API URL", text: $providerApiUrl)
+                            .autocapitalization(.none)
+                            .disableAutocorrection(true)
+                        SecureField("API Key", text: $providerApiKey)
+                    }
+                    Section {
+                        Button("Validate") {
+                            Task {
+                                do {
+                                    let body = RemoteSubAgentValidateRequest(
+                                        platform: providerPlatform,
+                                        apiUrl: providerApiUrl.isEmpty ? nil : providerApiUrl,
+                                        apiKey: providerApiKey.isEmpty ? nil : providerApiKey
+                                    )
+                                    let result = try await APIClient.shared.validateRemoteSubAgentProvider(body: body)
+                                    if result["valid"] as? Bool == true {
+                                        errorMessage = "Provider validated successfully"
+                                    } else {
+                                        errorMessage = "Validation failed"
+                                    }
+                                } catch {
+                                    errorMessage = error.localizedDescription
+                                }
+                            }
+                        }
+                    }
+                }
+                .navigationTitle("Add Provider")
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button("Cancel") { showAddProvider = false }
+                    }
+                    ToolbarItem(placement: .confirmationAction) {
+                        Button("Save") { showAddProvider = false }
+                    }
+                }
+            }
+        }
+        .onAppear {
+            Task {
+                do {
+                    providers = try await APIClient.shared.getRemoteSubAgentProviders()
+                } catch { errorMessage = error.localizedDescription }
+                isLoading = false
+            }
+        }
+    }
+}
+
+#Preview {
+    NavigationStack {
+        SubAgentsView()
+    }
+}
