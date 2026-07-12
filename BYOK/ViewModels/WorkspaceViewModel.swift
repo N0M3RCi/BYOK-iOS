@@ -6,7 +6,7 @@ final class WorkspaceViewModel: ObservableObject {
     @Published var isLoading = false
     @Published var errorMessage: String?
     @Published var currentPath = ""
-    @Published var uploadFile = false
+    @Published var showFilePicker = false
 
     private let apiClient = APIClient.shared
     private let keychain = KeychainManager.shared
@@ -33,5 +33,16 @@ final class WorkspaceViewModel: ObservableObject {
             )
             files.removeAll { $0.filename == filename }
         } catch { errorMessage = error.localizedDescription }
+    }
+
+    func uploadFile(data: Data, filename: String, projectID: String) async {
+        isLoading = true
+        defer { isLoading = false }
+        do {
+            let _ = try await apiClient.uploadFile(data: data, filename: filename)
+            loadFiles(projectID: projectID)
+        } catch {
+            errorMessage = error.localizedDescription
+        }
     }
 }
