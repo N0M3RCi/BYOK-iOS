@@ -2,7 +2,7 @@ import Foundation
 
 /// Lightweight localization manager.
 /// Uses bundled JSON files for each language.
-final class LocalizationManager: ObservableObject {
+final class LocalizationManager: ObservableObject, @unchecked Sendable {
     static let shared = LocalizationManager()
 
     @Published var currentLanguage: AppLanguage {
