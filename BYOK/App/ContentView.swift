@@ -8,14 +8,8 @@ struct ContentView: View {
             switch authViewModel.authState {
             case .unknown:
                 SplashView()
-            case .needsLogin:
-                LoginView()
-            case .needsSignUp:
-                SignUpView()
             case .needsPasscode:
-                PasscodeView(mode: .enter)
-            case .needsPasscodeSetup:
-                PasscodeView(mode: .create)
+                PasscodeGateView()
             case .authenticated:
                 MainTabView()
             }
@@ -27,14 +21,24 @@ struct ContentView: View {
 struct SplashView: View {
     var body: some View {
         VStack(spacing: 16) {
-            Image(systemName: "brain.head.profile")
-                .font(.system(size: 64))
-                .foregroundColor(.accentColor)
-            Text("M3RCI")
-                .font(.largeTitle.bold())
-            Text("UniMind")
-                .font(.title2)
+            ZStack {
+                RoundedRectangle(cornerRadius: 16)
+                    .fill(Color.black)
+                    .frame(width: 80, height: 80)
+                    .overlay(RoundedRectangle(cornerRadius: 16).stroke(Color.themeYellow, lineWidth: 2))
+                    .shadow(color: Color.themeYellow.opacity(0.2), radius: 12)
+                Text("🤖")
+                    .font(.system(size: 30))
+            }
+
+            Text("M3RCI-UniMind")
+                .font(.title.bold())
+                .foregroundColor(.primary)
+
+            Text("AI Multi-Agent Workforce")
+                .font(.subheadline)
                 .foregroundColor(.secondary)
+
             ProgressView()
                 .padding(.top, 24)
         }
@@ -51,19 +55,9 @@ struct MainTabView: View {
                     Label("Home", systemImage: "house")
                 }
 
-            ChatView()
+            ChatListView()
                 .tabItem {
                     Label("Chat", systemImage: "message")
-                }
-
-            AgentsListView()
-                .tabItem {
-                    Label("Agents", systemImage: "person.2")
-                }
-
-            HistoryListView()
-                .tabItem {
-                    Label("History", systemImage: "clock")
                 }
 
             SettingsView()
@@ -74,8 +68,36 @@ struct MainTabView: View {
     }
 }
 
-#Preview {
-    ContentView()
-        .environmentObject(AuthViewModel())
-        .environmentObject(ThemeManager())
+// Placeholder views for references that don't exist yet
+struct ChatListView: View {
+    var body: some View {
+        NavigationStack {
+            VStack(spacing: 16) {
+                Image(systemName: "message")
+                    .font(.system(size: 48))
+                    .foregroundColor(.secondary)
+                Text("Chat")
+                    .font(.title2.bold())
+                Text("Chat interface coming soon")
+                    .foregroundColor(.secondary)
+            }
+        }
+    }
+}
+
+struct SettingsView: View {
+    @EnvironmentObject var authViewModel: AuthViewModel
+
+    var body: some View {
+        NavigationStack {
+            List {
+                Section("Account") {
+                    Button(role: .destructive, action: { authViewModel.logout() }) {
+                        Label("Logout", systemImage: "rectangle.portrait.and.arrow.right")
+                    }
+                }
+            }
+            .navigationTitle("Settings")
+        }
+    }
 }
