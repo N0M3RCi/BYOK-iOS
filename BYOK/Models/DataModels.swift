@@ -542,6 +542,7 @@ struct EmptyResponse: Codable {}
 struct ActivityLog: Codable, Identifiable, Equatable {
     let id: String
     let action: String
+    let status: String
     let description: String?
     let resourceType: String?
     let resourceId: String?
@@ -551,7 +552,7 @@ struct ActivityLog: Codable, Identifiable, Equatable {
     let metadata: [String: String]?
 
     enum CodingKeys: String, CodingKey {
-        case id, action, description
+        case id, action, status, description
         case resourceType = "resource_type"
         case resourceId = "resource_id"
         case userId = "user_id"
