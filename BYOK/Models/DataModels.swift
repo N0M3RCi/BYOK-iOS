@@ -638,14 +638,17 @@ struct ProjectSpace: Codable, Identifiable, Equatable {
 struct RemoteSubAgentProvider: Codable, Identifiable, Equatable {
     let id: String
     var name: String
+    let platform: String
     let type: String?
+    let isOnline: Bool
     let description: String?
     let endpoint: String?
     let apiKey: String?
     let createdAt: String?
 
     enum CodingKeys: String, CodingKey {
-        case id, name, type, description, endpoint
+        case id, name, platform, type, description, endpoint
+        case isOnline = "is_online"
         case apiKey = "api_key"
         case createdAt = "created_at"
     }
@@ -654,7 +657,7 @@ struct RemoteSubAgentProvider: Codable, Identifiable, Equatable {
 // MARK: - Remote SubAgent Validate Request
 struct RemoteSubAgentValidateRequest: Codable {
     let platform: String
-    let apiUrl: String
+    let apiUrl: String?
     let apiKey: String?
 
     enum CodingKeys: String, CodingKey {

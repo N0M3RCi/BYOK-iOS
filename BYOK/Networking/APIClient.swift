@@ -201,6 +201,21 @@ final class APIClient: @unchecked Sendable {
         try await brainGet(path: "/remote-subagents/providers")
     }
 
+    func validateRemoteSubAgentProvider(body: RemoteSubAgentValidateRequest) async throws -> [String: Any] {
+        let url = try buildURL(base: APIConfig.shared.brainServiceURL, path: "/remote-subagents/validate")
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        let headers = await authHeaders()
+        headers.forEach { request.setValue($1, forHTTPHeaderField: $0) }
+        request.httpBody = try JSONEncoder().encode(body)
+        let (data, _) = try await session.data(for: request)
+        guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+            throw APIError.decodingError("Invalid response")
+        }
+        return json
+    }
+
     // MARK: - Multipart Upload
 
     func uploadFile(data: Data, filename: String) async throws -> FileUploadResponse {
