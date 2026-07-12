@@ -566,12 +566,13 @@ struct Channel: Codable, Identifiable, Equatable {
     let name: String
     let type: String?
     let description: String?
+    let enabled: Bool?
     let memberCount: Int?
     let createdAt: String?
     let lastActivityAt: String?
 
     enum CodingKeys: String, CodingKey {
-        case id, name, type, description
+        case id, name, type, description, enabled
         case memberCount = "member_count"
         case createdAt = "created_at"
         case lastActivityAt = "last_activity_at"
