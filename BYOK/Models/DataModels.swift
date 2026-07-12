@@ -695,8 +695,8 @@ struct TaskExecution: Codable, Identifiable, Equatable {
 // MARK: - Create Project Request
 struct CreateProjectRequest: Codable {
     let name: String
-    let spaceId: String
     let description: String?
+    let spaceId: String?
 
     enum CodingKeys: String, CodingKey {
         case name, description
