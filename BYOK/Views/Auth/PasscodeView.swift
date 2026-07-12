@@ -2,61 +2,99 @@ import SwiftUI
 
 // MARK: - Constellation Canvas (Animated Particle Background)
 
-struct ConstellationCanvas: View {
-    @State private var particles: [(x: CGFloat, y: CGFloat, vx: CGFloat, vy: CGFloat, size: CGFloat, baseSize: CGFloat, phase: CGFloat)] = []
-    @State private var initialized = false
-    @State private var lastUpdate: Date = Date()
+/// Manages particle physics on a timer (like web app's requestAnimationFrame)
+final class ParticleSystem: ObservableObject, @unchecked Sendable {
+    struct Particle {
+        var x: CGFloat
+        var y: CGFloat
+        var vx: CGFloat
+        var vy: CGFloat
+        var size: CGFloat
+        let baseSize: CGFloat
+        let phase: CGFloat
+    }
+
+    @Published var particles: [Particle] = []
+    var canvasWidth: CGFloat = 400
+    var canvasHeight: CGFloat = 800
 
     private let particleCount = 100
-    private let connectionDist: CGFloat = 180
+    let connectionDist: CGFloat = 180
+    private var timer: Timer?
+    private var lastUpdate: Date = Date()
+
+    func start() {
+        lastUpdate = Date()
+        timer = Timer.scheduledTimer(withTimeInterval: 1/60, repeats: true) { [weak self] _ in
+            self?.tick()
+        }
+    }
+
+    func stop() {
+        timer?.invalidate()
+        timer = nil
+    }
+
+    private func tick() {
+        let now = Date()
+        let dt = min(now.timeIntervalSince(lastUpdate), 0.05)
+        lastUpdate = now
+
+        if particles.isEmpty {
+            var newParticles: [Particle] = []
+            for _ in 0..<particleCount {
+                let baseSize = CGFloat.random(in: 0.8...2.8)
+                newParticles.append(Particle(
+                    x: CGFloat.random(in: 0...max(canvasWidth, 400)),
+                    y: CGFloat.random(in: 0...max(canvasHeight, 800)),
+                    vx: CGFloat.random(in: -0.25...0.25),
+                    vy: CGFloat.random(in: -0.25...0.25),
+                    size: baseSize,
+                    baseSize: baseSize,
+                    phase: CGFloat.random(in: 0...(CGFloat.pi * 2))
+                ))
+            }
+            particles = newParticles
+            return
+        }
+
+        let referenceDate = now.timeIntervalSinceReferenceDate
+        let w = canvasWidth
+        let h = canvasHeight
+
+        for i in 0..<particles.count {
+            var p = particles[i]
+            // Damping (web app: p.vx *= 0.99)
+            p.vx *= CGFloat(pow(0.99, dt * 60))
+            p.vy *= CGFloat(pow(0.99, dt * 60))
+
+            p.x += p.vx * CGFloat(dt * 60)
+            p.y += p.vy * CGFloat(dt * 60)
+
+            // Wrap around edges
+            if p.x < -20 { p.x = w + 20 }
+            if p.x > w + 20 { p.x = -20 }
+            if p.y < -20 { p.y = h + 20 }
+            if p.y > h + 20 { p.y = -20 }
+
+            // Pulsing size (web app: Math.sin(now * 0.8 + phase))
+            let pulse = sin(referenceDate * 0.8 + Double(p.phase)) * 0.3 + 0.7
+            p.size = p.baseSize * CGFloat(pulse)
+
+            particles[i] = p
+        }
+    }
+}
+
+struct ConstellationCanvas: View {
+    @StateObject private var system = ParticleSystem()
 
     var body: some View {
-        TimelineView(.animation(minimumInterval: 1/60)) { timeline in
+        GeometryReader { geo in
             Canvas { context, size in
-                let now = timeline.date.timeIntervalSinceReferenceDate
+                let particles = system.particles
                 let w = size.width
                 let h = size.height
-
-                // Initialize particles once (like web app's useEffect)
-                if !initialized || particles.isEmpty {
-                    var newParticles: [(x: CGFloat, y: CGFloat, vx: CGFloat, vy: CGFloat, size: CGFloat, baseSize: CGFloat, phase: CGFloat)] = []
-                    for _ in 0..<particleCount {
-                        let baseSize = CGFloat.random(in: 0.8...2.8)
-                        newParticles.append((
-                            x: CGFloat.random(in: 0...w),
-                            y: CGFloat.random(in: 0...h),
-                            vx: CGFloat.random(in: -0.25...0.25),
-                            vy: CGFloat.random(in: -0.25...0.25),
-                            size: baseSize,
-                            baseSize: baseSize,
-                            phase: CGFloat.random(in: 0...(CGFloat.pi * 2))
-                        ))
-                    }
-                    particles = newParticles
-                    initialized = true
-                    lastUpdate = timeline.date
-                    return
-                }
-
-                // Update particle positions with damping
-                let dt = min(timeline.date.timeIntervalSince(lastUpdate), 0.05)
-                lastUpdate = timeline.date
-
-                for i in 0..<particles.count {
-                    particles[i].vx *= CGFloat(pow(0.99, dt * 60))
-                    particles[i].vy *= CGFloat(pow(0.99, dt * 60))
-
-                    particles[i].x += particles[i].vx * CGFloat(dt * 60)
-                    particles[i].y += particles[i].vy * CGFloat(dt * 60)
-
-                    if particles[i].x < -20 { particles[i].x = w + 20 }
-                    if particles[i].x > w + 20 { particles[i].x = -20 }
-                    if particles[i].y < -20 { particles[i].y = h + 20 }
-                    if particles[i].y > h + 20 { particles[i].y = -20 }
-
-                    let pulse = sin(now * 0.8 + Double(particles[i].phase)) * 0.3 + 0.7
-                    particles[i].size = particles[i].baseSize * CGFloat(pulse)
-                }
 
                 // Draw particles
                 for p in particles {
@@ -78,8 +116,8 @@ struct ConstellationCanvas: View {
                         let dx = particles[i].x - particles[j].x
                         let dy = particles[i].y - particles[j].y
                         let dist = sqrt(dx * dx + dy * dy)
-                        if dist < connectionDist {
-                            let ratio = dist / connectionDist
+                        if dist < system.connectionDist {
+                            let ratio = dist / system.connectionDist
                             let alpha = (1 - ratio) * 0.2
                             var path = Path()
                             path.move(to: CGPoint(x: particles[i].x, y: particles[i].y))
@@ -90,6 +128,16 @@ struct ConstellationCanvas: View {
                 }
             }
             .ignoresSafeArea()
+            .onAppear {
+                system.canvasWidth = geo.size.width
+                system.canvasHeight = geo.size.height
+                system.start()
+            }
+            .onChange(of: geo.size) { oldSize, newSize in
+                system.canvasWidth = newSize.width
+                system.canvasHeight = newSize.height
+            }
+            .onDisappear { system.stop() }
         }
     }
 }
