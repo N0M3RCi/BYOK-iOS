@@ -55,7 +55,7 @@ struct MainTabView: View {
                     Label("Home", systemImage: "house")
                 }
 
-            ChatListView()
+            ChatView()
                 .tabItem {
                     Label("Chat", systemImage: "message")
                 }
@@ -68,36 +68,4 @@ struct MainTabView: View {
     }
 }
 
-// Placeholder views for references that don't exist yet
-struct ChatListView: View {
-    var body: some View {
-        NavigationStack {
-            VStack(spacing: 16) {
-                Image(systemName: "message")
-                    .font(.system(size: 48))
-                    .foregroundColor(.secondary)
-                Text("Chat")
-                    .font(.title2.bold())
-                Text("Chat interface coming soon")
-                    .foregroundColor(.secondary)
-            }
-        }
-    }
-}
-
-struct SettingsView: View {
-    @EnvironmentObject var authViewModel: AuthViewModel
-
-    var body: some View {
-        NavigationStack {
-            List {
-                Section("Account") {
-                    Button(role: .destructive, action: { authViewModel.logout() }) {
-                        Label("Logout", systemImage: "rectangle.portrait.and.arrow.right")
-                    }
-                }
-            }
-            .navigationTitle("Settings")
-        }
-    }
-}
+// Note: ChatView and SettingsView are defined in their respective files
