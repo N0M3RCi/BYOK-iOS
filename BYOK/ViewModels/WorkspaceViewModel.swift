@@ -6,6 +6,7 @@ final class WorkspaceViewModel: ObservableObject {
     @Published var isLoading = false
     @Published var errorMessage: String?
     @Published var currentPath = ""
+    @Published var uploadFile = false
 
     private let apiClient = APIClient.shared
     private let keychain = KeychainManager.shared
