@@ -536,3 +536,145 @@ struct APIResponse<T: Codable>: Codable {
 }
 
 struct EmptyResponse: Codable {}
+
+// MARK: - Activity Log
+struct ActivityLog: Codable, Identifiable, Equatable {
+    let id: String
+    let action: String
+    let description: String?
+    let resourceType: String?
+    let resourceId: String?
+    let userId: String?
+    let userEmail: String?
+    let createdAt: String
+    let metadata: [String: String]?
+
+    enum CodingKeys: String, CodingKey {
+        case id, action, description
+        case resourceType = "resource_type"
+        case resourceId = "resource_id"
+        case userId = "user_id"
+        case userEmail = "user_email"
+        case createdAt = "created_at"
+        case metadata
+    }
+}
+
+// MARK: - Channel
+struct Channel: Codable, Identifiable, Equatable {
+    let id: String
+    let name: String
+    let type: String?
+    let description: String?
+    let memberCount: Int?
+    let createdAt: String?
+    let lastActivityAt: String?
+
+    enum CodingKeys: String, CodingKey {
+        case id, name, type, description
+        case memberCount = "member_count"
+        case createdAt = "created_at"
+        case lastActivityAt = "last_activity_at"
+    }
+}
+
+// MARK: - Project
+struct Project: Codable, Identifiable, Equatable {
+    let id: String
+    let name: String
+    let description: String?
+    let status: String?
+    let spaceId: String?
+    let spaceName: String?
+    let taskCount: Int?
+    let createdAt: String
+    let updatedAt: String?
+
+    enum CodingKeys: String, CodingKey {
+        case id, name, description, status
+        case spaceId = "space_id"
+        case spaceName = "space_name"
+        case taskCount = "task_count"
+        case createdAt = "created_at"
+        case updatedAt = "updated_at"
+    }
+}
+
+// MARK: - ProjectSpace
+struct ProjectSpace: Codable, Identifiable, Equatable {
+    let id: String
+    let name: String
+    let type: String?
+    let rootPath: String?
+    let projectCount: Int?
+    let createdAt: String?
+    let updatedAt: String?
+
+    enum CodingKeys: String, CodingKey {
+        case id, name, type
+        case rootPath = "root_path"
+        case projectCount = "project_count"
+        case createdAt = "created_at"
+        case updatedAt = "updated_at"
+    }
+}
+
+// MARK: - Remote SubAgent Provider
+final class RemoteSubAgentProvider: ObservableObject, @unchecked Sendable {
+    static let shared = RemoteSubAgentProvider()
+
+    @Published var availableAgents: [Agent] = []
+    @Published var isLoading = false
+    @Published var errorMessage: String?
+
+    private let apiClient = APIClient.shared
+
+    private init() {}
+
+    func fetchAgents() async {
+        isLoading = true
+        defer { isLoading = false }
+        do {
+            let agents: [Agent] = try await apiClient.brainGet(path: "/agents")
+            await MainActor.run { availableAgents = agents }
+        } catch {
+            await MainActor.run { errorMessage = error.localizedDescription }
+        }
+    }
+
+    func createAgent(name: String, description: String, tools: [String]) async -> Agent? {
+        do {
+            let body: [String: AnyEncodable] = [
+                "name": AnyEncodable(name),
+                "description": AnyEncodable(description),
+                "tools": AnyEncodable(tools)
+            ]
+            let agent: Agent = try await apiClient.brainPost(path: "/agents", body: body)
+            await fetchAgents()
+            return agent
+        } catch {
+            await MainActor.run { errorMessage = error.localizedDescription }
+            return nil
+        }
+    }
+}
+
+// MARK: - Task Execution
+struct TaskExecution: Codable, Identifiable, Equatable {
+    let id: String
+    let taskId: String
+    let projectId: String?
+    let status: String
+    let result: String?
+    let agent: String?
+    let startedAt: String?
+    let completedAt: String?
+
+    enum CodingKeys: String, CodingKey {
+        case id, status, result, agent
+        case taskId = "task_id"
+        case projectId = "project_id"
+        case startedAt = "started_at"
+        case completedAt = "completed_at"
+    }
+}
