@@ -189,11 +189,12 @@ struct ChatStatus: Codable, Equatable {
 struct ChatMessage: Identifiable, Equatable {
     let id: String
     let role: MessageRole
-    let content: String
+    var content: String
     let timestamp: Date
     var reasoning: String?
     var toolCalls: [ToolCallInfo]?
     var isStreaming: Bool
+    var taskExecutions: [TaskExecution]?
 
     static func == (lhs: ChatMessage, rhs: ChatMessage) -> Bool {
         lhs.id == rhs.id &&
@@ -681,11 +682,12 @@ struct TaskExecution: Codable, Identifiable, Equatable {
     let status: String
     let result: String?
     let agent: String?
+    let agentName: String?
     let startedAt: String?
     let completedAt: String?
 
     enum CodingKeys: String, CodingKey {
-        case id, status, result, agent
+        case id, status, result, agent, agentName
         case taskId = "task_id"
         case projectId = "project_id"
         case startedAt = "started_at"
@@ -702,5 +704,20 @@ struct CreateProjectRequest: Codable {
     enum CodingKeys: String, CodingKey {
         case name, description
         case spaceId = "space_id"
+    }
+}
+
+// MARK: - Message Feedback
+struct MessageFeedback: Identifiable, Codable {
+    let id: String
+    let messageId: String
+    let rating: Int
+    let comment: String?
+    let createdAt: String
+
+    enum CodingKeys: String, CodingKey {
+        case id, rating, comment
+        case messageId = "message_id"
+        case createdAt = "created_at"
     }
 }
