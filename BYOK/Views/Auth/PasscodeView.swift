@@ -127,7 +127,7 @@ struct ConstellationCanvas: View {
                 system.canvasHeight = geo.size.height
                 system.start()
             }
-            .onChange(of: geo.size) { oldSize, newSize in
+            .onChange(of: geo.size) { newSize in
                 system.canvasWidth = newSize.width
                 system.canvasHeight = newSize.height
             }

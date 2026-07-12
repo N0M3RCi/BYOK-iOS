@@ -85,6 +85,19 @@ final class AuthViewModel: ObservableObject {
         }
     }
 
+    // MARK: - Email/Password Login (used by LoginView)
+
+    func login(email: String, password: String) async {
+        isLoading = true
+        errorMessage = nil
+        defer { isLoading = false }
+
+        let error = await adminLogin(email: email, password: password)
+        if let error {
+            errorMessage = error
+        }
+    }
+
     // MARK: - Admin Login (matches web app's user/login endpoint)
 
     func adminLogin(email: String, password: String) async -> String? {
