@@ -5,6 +5,10 @@ extension Color {
     static let accentTeal = Color(red: 0.0, green: 0.78, blue: 0.74)
     static let accentBlue = Color(red: 0.2, green: 0.52, blue: 0.96)
 
+    // Theme yellow (matches web app #f0b100)
+    static let themeYellow = Color(red: 0.941, green: 0.694, blue: 0.0)
+    static let themeYellowLight = Color(red: 0.992, green: 0.780, blue: 0.0)
+
     // Chat bubble colors
     static let userBubble = Color.accentTeal.opacity(0.85)
     static let aiBubble = Color(.systemGray6)

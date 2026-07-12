@@ -8,6 +8,7 @@ enum APIError: LocalizedError, Equatable {
     case decodingError(String)
     case unauthorized
     case networkError(String)
+    case serverError(String)
     case unknown(String)
 
     var errorDescription: String? {
@@ -18,6 +19,7 @@ enum APIError: LocalizedError, Equatable {
         case .decodingError(let detail): return "Failed to parse response: \(detail)"
         case .unauthorized: return "Session expired. Please log in again."
         case .networkError(let detail): return detail
+        case .serverError(let message): return message
         case .unknown(let detail): return detail
         }
     }
@@ -28,7 +30,7 @@ struct APIConfig {
     static let shared = APIConfig()
 
     var brainBaseURL: String {
-        UserDefaults.standard.string(forKey: "brain_endpoint") ?? "https://class.n0m3rci.cc"
+        UserDefaults.standard.string(forKey: "brain_endpoint") ?? "https://class.n0m3rci.cc/enter"
     }
 
     var apiBaseURL: String {
@@ -50,7 +52,7 @@ final class APIClient: @unchecked Sendable {
     private init() {
         let config = URLSessionConfiguration.default
         config.timeoutIntervalForRequest = 30
-        config.timeoutIntervalForResource = 3600 // 60 minutes for SSE
+        config.timeoutIntervalForResource = 3600
         self.session = URLSession(configuration: config)
 
         self.decoder = JSONDecoder()
@@ -60,20 +62,20 @@ final class APIClient: @unchecked Sendable {
 
     func authHeaders() async -> [String: String] {
         var headers: [String: String] = [:]
-        if let token = await KeychainManager.shared.getToken() {
+        if let token = KeychainManager.shared.getToken() {
             headers["Authorization"] = "Bearer \(token)"
         }
         headers["X-Channel"] = "ios"
-        if let sessionID = await KeychainManager.shared.getSessionID() {
+        if let sessionID = KeychainManager.shared.getSessionID() {
             headers["X-Session-ID"] = sessionID
         }
-        if let userID = await KeychainManager.shared.getUserID() {
+        if let userID = KeychainManager.shared.getUserID() {
             headers["X-User-ID"] = userID
         }
         return headers
     }
 
-    // MARK: - API Server Requests
+    // MARK: - API Server Requests (with HTTP status validation)
 
     func apiRequest<T: Decodable>(
         method: String,
@@ -99,14 +101,29 @@ final class APIClient: @unchecked Sendable {
         let (data, response) = try await session.data(for: request)
         try validateResponse(response)
 
-        return try decoder.decode(T.self, from: data)
+        // Check server error format: {"code": X, "text": "..."}
+        if let errorResponse = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+           let code = errorResponse["code"] as? Int, code != 0 {
+            let text = errorResponse["text"] as? String ?? "Request failed"
+            throw APIError.serverError(text)
+        }
+
+        do {
+            return try decoder.decode(T.self, from: data)
+        } catch let error as DecodingError {
+            throw APIError.decodingError(error.localizedDescription)
+        }
     }
 
-    func apiRequestNoBody<T: Decodable>(
-        method: String,
+    // MARK: - Raw Request (always parses JSON body like web app's proxyFetchPost)
+    // Does NOT throw on non-2xx HTTP — always tries to parse the response body
+
+    func rawRequest(
+        method: String = "POST",
         path: String,
-        requiresAuth: Bool = true
-    ) async throws -> T {
+        body: [String: String] = [:],
+        requiresAuth: Bool = false
+    ) async throws -> [String: Any] {
         let url = try buildURL(base: APIConfig.shared.apiBaseURL, path: path)
         var request = URLRequest(url: url)
         request.httpMethod = method
@@ -118,10 +135,24 @@ final class APIClient: @unchecked Sendable {
             headers.forEach { request.setValue($1, forHTTPHeaderField: $0) }
         }
 
-        let (data, response) = try await session.data(for: request)
-        try validateResponse(response)
+        if !body.isEmpty {
+            request.httpBody = try JSONSerialization.data(withJSONObject: body)
+        }
 
-        return try decoder.decode(T.self, from: data)
+        let (data, _) = try await session.data(for: request)
+
+        // Always try to parse JSON body (matches web app handleResponse)
+        guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+            throw APIError.decodingError("Invalid JSON response")
+        }
+
+        // Check server error format: code !== 0 means error (web app convention)
+        if let code = json["code"] as? Int, code != 0 {
+            let text = json["text"] as? String ?? "Request failed"
+            throw APIError.serverError(text)
+        }
+
+        return json
     }
 
     // MARK: - Brain Service Requests

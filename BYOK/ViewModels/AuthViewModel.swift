@@ -6,10 +6,7 @@ import SwiftUI
 final class AuthViewModel: ObservableObject {
     enum AuthState: Equatable {
         case unknown
-        case needsLogin
-        case needsSignUp
         case needsPasscode
-        case needsPasscodeSetup
         case authenticated
     }
 
@@ -18,186 +15,103 @@ final class AuthViewModel: ObservableObject {
     @Published var errorMessage: String?
     @Published var user: User?
     @Published var token: String?
-    @Published var biometricEnabled = false
 
     private let apiClient = APIClient.shared
     private let keychain = KeychainManager.shared
-
-    init() {
-        biometricEnabled = UserDefaults.standard.bool(forKey: "biometric_enabled")
-    }
 
     // MARK: - Auto Login
 
     func checkAutoLogin() {
         Task {
             guard let token = keychain.getToken() else {
-                authState = hasPasscode() ? .needsPasscode : .needsLogin
-                return
-            }
-            self.token = token
-            if hasPasscode() {
                 authState = .needsPasscode
                 return
             }
-            await performAutoLogin(token: token)
+            self.token = token
+            // Token exists — go straight to authenticated
+            authState = .authenticated
         }
     }
 
-    private func hasPasscode() -> Bool {
-        keychain.hasPasscode()
-    }
+    // MARK: - Passcode Login (matches web app's passcode-login endpoint)
 
-    private func performAutoLogin(token: String) async {
+    func passcodeLogin(code: String) async -> String? {
         isLoading = true
         errorMessage = nil
+        defer { isLoading = false }
+
         do {
-            let response: LoginResponse = try await apiClient.apiRequest(
+            let response = try await apiClient.rawRequest(
                 method: "POST",
-                path: "/user/auto-login",
-                requiresAuth: true
+                path: "/auth/passcode-login",
+                body: ["passcode": code]
             )
-            if response.code == 0 {
+            if let token = response["token"] as? String {
                 self.token = token
-                if let userId = response.userId {
-                    keychain.saveUserID("\(userId)")
+                keychain.saveToken(token)
+                if let email = response["email"] as? String {
+                    keychain.saveEmail(email)
                 }
                 authState = .authenticated
-            } else {
-                keychain.clearAll()
-                authState = .needsLogin
+                return nil
             }
+            let text = response["text"] as? String ?? "Invalid passcode"
+            return text
         } catch {
-            keychain.clearAll()
-            authState = .needsLogin
+            return error.localizedDescription
         }
-        isLoading = false
     }
 
-    // MARK: - Login
+    // MARK: - Passcode Register (matches web app's passcode-register endpoint)
 
-    func login(email: String, password: String) async {
+    func passcodeRegister(name: String) async -> (passcode: String?, error: String?) {
         isLoading = true
         errorMessage = nil
+        defer { isLoading = false }
+
         do {
-            let body = LoginRequest(email: email, password: password)
-            let response: LoginResponse = try await apiClient.apiRequest(
+            let response = try await apiClient.rawRequest(
+                method: "POST",
+                path: "/auth/passcode-register",
+                body: ["name": name]
+            )
+            if let passcode = response["passcode"] as? String {
+                return (passcode, nil)
+            }
+            let text = response["text"] as? String ?? "Registration failed"
+            return (nil, text)
+        } catch {
+            return (nil, error.localizedDescription)
+        }
+    }
+
+    // MARK: - Admin Login (matches web app's user/login endpoint)
+
+    func adminLogin(email: String, password: String) async -> String? {
+        isLoading = true
+        errorMessage = nil
+        defer { isLoading = false }
+
+        do {
+            let response = try await apiClient.rawRequest(
                 method: "POST",
                 path: "/user/login",
-                body: body,
-                requiresAuth: false
+                body: ["email": email, "password": password]
             )
-            if response.code == 0, let token = response.token {
+            if let token = response["access_token"] as? String {
                 self.token = token
                 keychain.saveToken(token)
                 keychain.saveEmail(email)
-                if let userId = response.userId {
-                    keychain.saveUserID("\(userId)")
-                }
-                if !keychain.hasPasscode() {
-                    authState = .needsPasscodeSetup
-                } else {
-                    authState = .authenticated
-                }
-            } else {
-                errorMessage = response.text ?? "Login failed"
-            }
-        } catch let error as APIError {
-            errorMessage = error.errorDescription
-        } catch {
-            errorMessage = error.localizedDescription
-        }
-        isLoading = false
-    }
-
-    // MARK: - Sign Up
-
-    func signUp(email: String, password: String, confirmPassword: String) async {
-        isLoading = true
-        errorMessage = nil
-        do {
-            let body = SignUpRequest(email: email, password: password, confirmPassword: confirmPassword)
-            let response: LoginResponse = try await apiClient.apiRequest(
-                method: "POST",
-                path: "/user/sign-up",
-                body: body,
-                requiresAuth: false
-            )
-            if response.code == 0 {
-                authState = .needsLogin
-            } else {
-                errorMessage = response.text ?? "Sign up failed"
-            }
-        } catch let error as APIError {
-            errorMessage = error.errorDescription
-        } catch {
-            errorMessage = error.localizedDescription
-        }
-        isLoading = false
-    }
-
-    // MARK: - Passcode
-
-    func setPasscode(_ code: String) {
-        Task {
-            do {
-                let body = PasscodeRequest(passcode: code)
-                let _: LoginResponse = try await apiClient.apiRequest(
-                    method: "POST",
-                    path: "/user/passcode",
-                    body: body
-                )
-                keychain.savePasscode(code)
                 authState = .authenticated
-            } catch {
-                keychain.savePasscode(code)
-                authState = .authenticated
+                return nil
             }
-        }
-    }
-
-    func verifyPasscode(_ code: String) -> Bool {
-        guard let stored = keychain.getPasscode() else { return false }
-        return stored == code
-    }
-
-    func changePasscode(oldCode: String, newCode: String) async -> Bool {
-        do {
-            let body = PasscodeRequest(passcode: newCode)
-            let _: LoginResponse = try await apiClient.apiRequest(
-                method: "PUT",
-                path: "/user/passcode",
-                body: body
-            )
-            keychain.savePasscode(newCode)
-            return true
+            if let detail = response["detail"] as? String {
+                return detail
+            }
+            let text = response["text"] as? String ?? "Login failed"
+            return text
         } catch {
-            return false
-        }
-    }
-
-    func removePasscode() async -> Bool {
-        do {
-            let _: EmptyResponse = try await apiClient.apiRequest(
-                method: "DELETE",
-                path: "/user/passcode"
-            )
-            keychain.deletePasscode()
-            return true
-        } catch {
-            return false
-        }
-    }
-
-    // MARK: - Biometrics
-
-    func authenticateWithBiometrics() async -> Bool {
-        do {
-            let success = try await BiometricService.shared.authenticate()
-            return success
-        } catch {
-            errorMessage = error.localizedDescription
-            return false
+            return error.localizedDescription
         }
     }
 
@@ -214,26 +128,7 @@ final class AuthViewModel: ObservableObject {
             keychain.clearAll()
             token = nil
             user = nil
-            authState = .needsLogin
-        }
-    }
-
-    // MARK: - Password Change
-
-    func changePassword(oldPassword: String, newPassword: String) async -> Bool {
-        isLoading = true
-        defer { isLoading = false }
-        do {
-            let body = PasswordChangeRequest(oldPassword: oldPassword, newPassword: newPassword)
-            let _: LoginResponse = try await apiClient.apiRequest(
-                method: "PUT",
-                path: "/user/password",
-                body: body
-            )
-            return true
-        } catch {
-            errorMessage = error.localizedDescription
-            return false
+            authState = .needsPasscode
         }
     }
 }
