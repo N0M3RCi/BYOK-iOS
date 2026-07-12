@@ -617,6 +617,7 @@ struct Project: Codable, Identifiable, Equatable {
 struct ProjectSpace: Codable, Identifiable, Equatable {
     let id: String
     let name: String
+    let description: String?
     let type: String?
     let rootPath: String?
     let projectCount: Int?
@@ -624,7 +625,7 @@ struct ProjectSpace: Codable, Identifiable, Equatable {
     let updatedAt: String?
 
     enum CodingKeys: String, CodingKey {
-        case id, name, type
+        case id, name, description, type
         case rootPath = "root_path"
         case projectCount = "project_count"
         case createdAt = "created_at"
