@@ -14,6 +14,11 @@ final class SettingsViewModel: ObservableObject {
     @Published var errorMessage: String?
     @Published var providers: [Provider] = []
     @Published var config: AppConfig?
+    @Published var availableModels: [ProviderModel] = []
+    @Published var selectedModel: String?
+    @Published var testResult: String?
+    @Published var isTesting = false
+    @Published var isFetchingModels = false
 
     private let apiClient = APIClient.shared
 
@@ -62,15 +67,25 @@ final class SettingsViewModel: ObservableObject {
         isLoading = true
         Task {
             do {
-                let _: [String: Any] = try await apiClient.rawRequest(
-                    method: "GET",
-                    path: "/auth/passcode-login",
-                    requiresAuth: false
-                )
-                isConnected = true
+                let base = APIConfig.shared.apiBaseURL
+                guard let url = URL(string: "\(base)/auth/passcode-login") else {
+                    isConnected = false
+                    isLoading = false
+                    return
+                }
+                var request = URLRequest(url: url)
+                request.httpMethod = "GET"
+                request.timeoutInterval = 10
+                let (_, response) = try await URLSession.shared.data(for: request)
+                // Any HTTP response with a valid status code means the server is reachable
+                if let httpResponse = response as? HTTPURLResponse {
+                    isConnected = true
+                } else {
+                    isConnected = false
+                }
             } catch {
-                // Server responded (even with error) = connected
-                isConnected = true
+                // Network error (timeout, cannot connect, etc.) = not connected
+                isConnected = false
             }
             isLoading = false
         }
@@ -90,18 +105,29 @@ final class SettingsViewModel: ObservableObject {
         }
     }
 
-    func addProvider(platform: String, apiKey: String, apiUrl: String?) async {
+    func addProvider(platform: String, apiKey: String, apiUrl: String?, modelType: String? = nil) async {
         do {
             var body: [String: String] = [
                 "platform": platform,
                 "api_key": apiKey
             ]
             if let url = apiUrl { body["api_url"] = url }
-            let _: Provider = try await apiClient.apiRequest(
+            let provider: Provider = try await apiClient.apiRequest(
                 method: "POST",
                 path: "/provider",
                 body: body
             )
+            if let modelType = modelType {
+                let modelBody: [String: String] = [
+                    "provider_id": provider.id,
+                    "model_type": modelType
+                ]
+                let _: EmptyResponse = try await apiClient.apiRequest(
+                    method: "PUT",
+                    path: "/provider/active-model",
+                    body: modelBody
+                )
+            }
             loadProviders()
         } catch {
             errorMessage = error.localizedDescription
@@ -120,6 +146,93 @@ final class SettingsViewModel: ObservableObject {
         } catch {
             errorMessage = error.localizedDescription
             return nil
+        }
+    }
+
+    // MARK: - Provider Management
+
+    func testProviderConnection(platform: String, apiKey: String, apiUrl: String?) async -> Bool {
+        isTesting = true
+        testResult = nil
+        defer { isTesting = false }
+
+        do {
+            var body: [String: String] = [
+                "platform": platform,
+                "api_key": apiKey
+            ]
+            if let url = apiUrl, !url.isEmpty { body["api_url"] = url }
+
+            let result: [String: Any] = try await apiClient.rawRequest(
+                method: "POST",
+                path: "/provider/test",
+                body: body,
+                requiresAuth: true
+            )
+            testResult = (result["message"] as? String) ?? (result["text"] as? String) ?? "Connection successful"
+            return true
+        } catch {
+            testResult = "Connection failed: \(error.localizedDescription)"
+            return false
+        }
+    }
+
+    func fetchProviderModels(platform: String, apiKey: String, apiUrl: String?) async {
+        isFetchingModels = true
+        availableModels = []
+        selectedModel = nil
+        defer { isFetchingModels = false }
+
+        do {
+            var body: [String: String] = [
+                "platform": platform,
+                "api_key": apiKey
+            ]
+            if let url = apiUrl, !url.isEmpty { body["api_url"] = url }
+
+            let response: ProviderModelsResponse = try await apiClient.brainPost(
+                path: "/model/list",
+                body: body
+            )
+            availableModels = response.modelList
+        } catch {
+            errorMessage = "Failed to fetch models: \(error.localizedDescription)"
+        }
+    }
+
+    func setActiveModel(providerId: String, modelType: String) {
+        selectedModel = modelType
+        Task {
+            do {
+                let body: [String: String] = [
+                    "provider_id": providerId,
+                    "model_type": modelType
+                ]
+                let _: EmptyResponse = try await apiClient.apiRequest(
+                    method: "PUT",
+                    path: "/provider/active-model",
+                    body: body
+                )
+            } catch {
+                errorMessage = error.localizedDescription
+            }
+        }
+    }
+
+    func deleteProvider(at offsets: IndexSet) {
+        Task {
+            for index in offsets {
+                let provider = providers[index]
+                do {
+                    let _: EmptyResponse = try await apiClient.apiRequest(
+                        method: "DELETE",
+                        path: "/provider/\(provider.id)"
+                    )
+                } catch {
+                    errorMessage = error.localizedDescription
+                }
+            }
+            loadProviders()
         }
     }
 }

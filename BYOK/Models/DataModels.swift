@@ -635,6 +635,22 @@ struct ProjectSpace: Codable, Identifiable, Equatable {
     }
 }
 
+// MARK: - Provider Model Listing
+struct ProviderModel: Codable, Identifiable, Equatable {
+    let id: String
+    let name: String
+}
+
+struct ProviderModelsResponse: Codable {
+    let models: [ProviderModel]?
+    let data: [ProviderModel]?
+    let modelNames: [String]?
+
+    var modelList: [ProviderModel] {
+        models ?? data ?? (modelNames?.map { ProviderModel(id: $0, name: $0) }) ?? []
+    }
+}
+
 // MARK: - Remote SubAgent Provider
 struct RemoteSubAgentProvider: Codable, Identifiable, Equatable {
     let id: String
