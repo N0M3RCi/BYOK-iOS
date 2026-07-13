@@ -129,6 +129,38 @@ final class AuthViewModel: ObservableObject {
         }
     }
 
+    // MARK: - Sign Up
+
+    func signUp(email: String, password: String, confirmPassword: String) async {
+        guard password == confirmPassword else {
+            errorMessage = "Passwords do not match"
+            return
+        }
+        isLoading = true
+        errorMessage = nil
+        defer { isLoading = false }
+
+        do {
+            let response = try await apiClient.rawRequest(
+                method: "POST",
+                path: "/auth/signup",
+                body: ["email": email, "password": password]
+            )
+            if let token = response["access_token"] as? String {
+                self.token = token
+                keychain.saveToken(token)
+                keychain.saveEmail(email)
+                authState = .authenticated
+            } else if let detail = response["detail"] as? String {
+                errorMessage = detail
+            } else {
+                errorMessage = "Sign up failed"
+            }
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
     // MARK: - Logout
 
     func logout() {
