@@ -314,6 +314,12 @@ final class APIClient: @unchecked Sendable {
         try await brainDelete(path: "/knowledge-base/\(knowledgeBaseId)/documents/\(documentId)")
     }
 
+    // MARK: - User Stats
+
+    func getUserStats() async throws -> UserStats {
+        try await apiRequest(method: "GET", path: "/user/stat")
+    }
+
     // MARK: - Helpers
 
     private func buildURL(base: String, path: String) throws -> URL {

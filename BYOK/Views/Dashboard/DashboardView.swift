@@ -45,6 +45,9 @@ struct DashboardView: View {
                             NavigationLink(destination: KnowledgeBaseListView()) {
                                 quickActionCard(icon: "books.vertical.fill", title: "Knowledge", color: .green)
                             }
+                            NavigationLink(destination: UserStatsView()) {
+                                quickActionCard(icon: "chart.bar.fill", title: "My Stats", color: .indigo)
+                            }
                         }
                         .padding(.horizontal)
                     }

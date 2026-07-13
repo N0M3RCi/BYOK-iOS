@@ -214,6 +214,14 @@ struct ChatView: View {
                         Button(action: { showKnowledgeBasePicker = true }) {
                             Label("Attach Knowledge", systemImage: "books.vertical")
                         }
+                        Divider()
+                        if !viewModel.messages.isEmpty {
+                            Menu("Share") {
+                                Button("Share via System...") { viewModel.shareConversation() }
+                                Button("Copy as Text") { viewModel.copyConversationAsText() }
+                                Button("Copy as Markdown") { viewModel.copyConversationAsMarkdown() }
+                            }
+                        }
                     } label: {
                         Image(systemName: "ellipsis.circle")
                     }

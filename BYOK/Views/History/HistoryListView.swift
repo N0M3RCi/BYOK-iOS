@@ -52,7 +52,30 @@ struct HistoryDetailView: View {
                 }
             }
             .navigationTitle(item.title ?? "Conversation")
-            .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } }
+                if !messages.isEmpty {
+                    ToolbarItem(placement: .primaryAction) {
+                        Menu {
+                            Button("Share via System...") {
+                                let text = messages.map { "\($0.role == .user ? "You" : "Assistant"): \($0.content)" }.joined(separator: "\n\n")
+                                let av = UIActivityViewController(activityItems: [text], applicationActivities: nil)
+                                if let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+                                   let window = scene.windows.first, let root = window.rootViewController {
+                                    av.popoverPresentationController?.sourceView = root.view
+                                    root.present(av, animated: true)
+                                }
+                            }
+                            Button("Copy as Text") {
+                                let text = messages.map { "\($0.role == .user ? "You" : "Assistant"): \($0.content)" }.joined(separator: "\n\n")
+                                UIPasteboard.general.string = text
+                            }
+                        } label: {
+                            Image(systemName: "square.and.arrow.up")
+                        }
+                    }
+                }
+            }
             .onAppear {
                 Task {
                     do {

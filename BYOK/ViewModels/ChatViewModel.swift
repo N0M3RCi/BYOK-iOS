@@ -322,6 +322,44 @@ final class ChatViewModel: ObservableObject {
         }
     }
 
+    // MARK: - Share
+
+    var conversationAsText: String {
+        messages.map { msg in
+            let role = msg.role == .user ? "You" : "Assistant"
+            return "\(role): \(msg.content)"
+        }.joined(separator: "\n\n")
+    }
+
+    var conversationAsMarkdown: String {
+        let header = "# Chat Conversation\n\n"
+        let body = messages.map { msg in
+            let role = msg.role == .user ? "**You**" : "**Assistant**"
+            return "\(role):\n\n\(msg.content)"
+        }.joined(separator: "\n\n---\n\n")
+        return header + body
+    }
+
+    func copyConversationAsText() {
+        UIPasteboard.general.string = conversationAsText
+    }
+
+    func copyConversationAsMarkdown() {
+        UIPasteboard.general.string = conversationAsMarkdown
+    }
+
+    func shareConversation() {
+        guard !messages.isEmpty else { return }
+        let text = conversationAsText
+        let av = UIActivityViewController(activityItems: [text], applicationActivities: nil)
+        if let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+           let window = scene.windows.first,
+           let root = window.rootViewController {
+            av.popoverPresentationController?.sourceView = root.view
+            root.present(av, animated: true)
+        }
+    }
+
     // MARK: - Model Provider/Type Helpers
 
     var availableModels: [ModelType] {

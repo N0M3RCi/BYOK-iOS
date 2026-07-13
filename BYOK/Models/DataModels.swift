@@ -837,3 +837,30 @@ enum DocumentStatus: String, Codable, Equatable {
     case failed
     case pending
 }
+
+// MARK: - User Stats
+struct UserStats: Codable, Equatable {
+    let totalRequests: Int
+    let totalInputTokens: Int
+    let totalOutputTokens: Int
+    let totalCost: Double?
+    let dailyStats: [DailyStat]?
+
+    enum CodingKeys: String, CodingKey {
+        case totalRequests = "total_requests"
+        case totalInputTokens = "total_input_tokens"
+        case totalOutputTokens = "total_output_tokens"
+        case totalCost = "total_cost"
+        case dailyStats = "daily_stats"
+    }
+}
+
+struct DailyStat: Codable, Identifiable, Equatable {
+    let date: String
+    let requests: Int
+    let inputTokens: Int
+    let outputTokens: Int
+    let cost: Double?
+
+    var id: String { date }
+}
