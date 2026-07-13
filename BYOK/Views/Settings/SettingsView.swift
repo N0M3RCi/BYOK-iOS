@@ -430,11 +430,20 @@ struct DebugLogView: View {
         NavigationStack {
             List {
                 if logger.entries.isEmpty {
-                    ContentUnavailableView(
-                        "No Logs",
-                        systemImage: "ladybug",
-                        description: Text("API request logs will appear here when you test a connection or fetch models.")
-                    )
+                    VStack(spacing: 12) {
+                        Image(systemName: "ladybug")
+                            .font(.system(size: 40))
+                            .foregroundColor(.secondary)
+                        Text("No Logs")
+                            .font(.title2).fontWeight(.medium)
+                        Text("API request logs will appear here when you test a connection or fetch models.")
+                            .font(.subheadline).foregroundColor(.secondary)
+                            .multilineTextAlignment(.center)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 40)
+                    .listRowBackground(Color.clear)
+                    .listRowSeparator(.hidden)
                 } else {
                     ForEach(logger.entries.reversed()) { entry in
                         VStack(alignment: .leading, spacing: 4) {
