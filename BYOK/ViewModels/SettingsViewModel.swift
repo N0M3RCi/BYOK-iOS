@@ -77,8 +77,8 @@ final class SettingsViewModel: ObservableObject {
                 request.httpMethod = "GET"
                 request.timeoutInterval = 10
                 let (_, response) = try await URLSession.shared.data(for: request)
-                // Any HTTP response with a valid status code means the server is reachable
-                if let httpResponse = response as? HTTPURLResponse {
+                // Any HTTP response means the server is reachable
+                if response is HTTPURLResponse {
                     isConnected = true
                 } else {
                     isConnected = false
