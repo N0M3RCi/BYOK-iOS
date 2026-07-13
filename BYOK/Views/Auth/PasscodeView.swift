@@ -26,93 +26,66 @@ struct PasscodeGateView: View {
 
     var body: some View {
         ZStack {
-            // Dark background
-            Color(red: 0.08, green: 0.09, blue: 0.12)
-                .ignoresSafeArea()
-
-            // Subtle gradient overlay
-            LinearGradient(
-                gradient: Gradient(colors: [
-                    Color(red: 0.12, green: 0.14, blue: 0.18).opacity(0.5),
-                    Color(red: 0.08, green: 0.09, blue: 0.12).opacity(0.8),
-                    Color(red: 0.08, green: 0.09, blue: 0.12)
-                ]),
-                startPoint: .top,
-                endPoint: .bottom
-            )
-            .ignoresSafeArea()
+            Color(red: 0.12, green: 0.14, blue: 0.18).ignoresSafeArea()
 
             VStack(spacing: 0) {
                 Spacer()
 
-                // Logo / Branding (matching web app)
-                VStack(spacing: 16) {
+                VStack(spacing: 24) {
+                    // Logo
                     ZStack {
                         RoundedRectangle(cornerRadius: 16)
                             .fill(Color.black)
-                            .frame(width: 64, height: 64)
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 16)
-                                    .stroke(Color.themeYellow, lineWidth: 2)
-                            )
-                            .shadow(color: Color.themeYellow.opacity(0.2), radius: 12, x: 0, y: 4)
-
-                        Text("🤖")
-                            .font(.system(size: 28))
+                            .frame(width: 56, height: 56)
+                            .overlay(RoundedRectangle(cornerRadius: 16).stroke(Color(hex: "#F5C842"), lineWidth: 2))
+                        Text("🤖").font(.system(size: 24))
                     }
 
                     Text("M3RCI - UniMind")
-                        .font(.system(size: 28, weight: .bold))
-                        .foregroundColor(.white)
-                }
-                .padding(.bottom, 48)
+                        .font(.system(size: 22, weight: .bold))
+                        .foregroundColor(.black)
 
-                // Tab selector
-                HStack(spacing: 0) {
-                    ForEach(PasscodeTab.allCases, id: \.self) { tab in
-                        Button(action: { selectedTab = tab; localError = nil; registeredPasscode = nil }) {
-                            Text(tab.rawValue)
-                                .font(.subheadline.weight(selectedTab == tab ? .semibold : .regular))
-                                .foregroundColor(selectedTab == tab ? .themeYellow : .white.opacity(0.5))
-                                .padding(.vertical, 12)
-                                .frame(maxWidth: .infinity)
-                                .overlay(alignment: .bottom) {
-                                    if selectedTab == tab {
-                                        Rectangle().fill(Color.themeYellow).frame(height: 2)
+                    // Tab selector
+                    HStack(spacing: 0) {
+                        ForEach(PasscodeTab.allCases, id: \.self) { tab in
+                            Button(action: { selectedTab = tab; localError = nil; registeredPasscode = nil }) {
+                                Text(tab.rawValue)
+                                    .font(.subheadline.weight(selectedTab == tab ? .semibold : .regular))
+                                    .foregroundColor(selectedTab == tab ? .black : .gray)
+                                    .padding(.vertical, 12)
+                                    .frame(maxWidth: .infinity)
+                                    .overlay(alignment: .bottom) {
+                                        if selectedTab == tab {
+                                            Rectangle().fill(Color(hex: "#F5C842")).frame(height: 2)
+                                        }
                                     }
-                                }
+                            }
                         }
                     }
+
+                    // Form content
+                    VStack(spacing: 20) {
+                        switch selectedTab {
+                        case .student: studentLoginView
+                        case .register: registerView
+                        case .admin: adminLoginView
+                        }
+
+                        if let err = localError ?? authViewModel.errorMessage {
+                            Text(err).font(.caption).foregroundColor(.red).multilineTextAlignment(.center)
+                        }
+                        if authViewModel.isLoading {
+                            ProgressView().tint(Color(hex: "#F5C842"))
+                        }
+                    }
+                    .padding(.horizontal, 24)
+                    .padding(.bottom, 24)
                 }
-                .padding(.horizontal, 32)
-
-                // Content
-                VStack(spacing: 24) {
-                    switch selectedTab {
-                    case .student:
-                        studentLoginView
-                    case .register:
-                        registerView
-                    case .admin:
-                        adminLoginView
-                    }
-
-                    // Error message
-                    if let err = localError ?? authViewModel.errorMessage {
-                        Text(err)
-                            .font(.caption)
-                            .foregroundColor(.red)
-                            .multilineTextAlignment(.center)
-                    }
-
-                    // Loading indicator
-                    if authViewModel.isLoading {
-                        ProgressView()
-                            .tint(.themeYellow)
-                    }
-                }
-                .padding(.horizontal, 32)
-                .padding(.vertical, 32)
+                .frame(maxWidth: 360)
+                .background(Color.white)
+                .cornerRadius(16)
+                .shadow(color: .black.opacity(0.15), radius: 24, x: 0, y: 8)
+                .padding(.horizontal, 24)
 
                 Spacer()
             }
@@ -123,10 +96,9 @@ struct PasscodeGateView: View {
     // MARK: - Student Login
 
     private var studentLoginView: some View {
-        VStack(spacing: 20) {
+        VStack(spacing: 16) {
             Text("Enter Student Passcode")
-                .font(.headline)
-                .foregroundColor(.white.opacity(0.9))
+                .font(.headline).foregroundColor(.black)
 
             TextField("Passcode", text: $passcodeInput)
                 .focused($focusedField, equals: .passcode)
@@ -134,17 +106,10 @@ struct PasscodeGateView: View {
                 .textContentType(.oneTimeCode)
                 .multilineTextAlignment(.center)
                 .font(.system(size: 24, design: .monospaced))
-                .foregroundColor(.themeYellow)
-                .frame(height: 52)
-                .background(
-                    RoundedRectangle(cornerRadius: 12)
-                        .stroke(Color.white.opacity(0.2), lineWidth: 1)
-                )
-                .background(
-                    RoundedRectangle(cornerRadius: 12)
-                        .fill(Color.white.opacity(0.05))
-                )
-                .padding(.horizontal, 20)
+                .foregroundColor(.black)
+                .frame(height: 48)
+                .background(RoundedRectangle(cornerRadius: 12).stroke(Color.gray.opacity(0.3), lineWidth: 1))
+                .padding(.horizontal, 16)
                 .onChange(of: passcodeInput) { newValue in
                     let filtered = String(newValue.filter(\.isNumber).prefix(6))
                     if filtered != newValue { passcodeInput = filtered }
@@ -155,18 +120,14 @@ struct PasscodeGateView: View {
                 guard passcodeInput.count == 6 else { return }
                 submitPasscode(passcodeInput)
             }
-            .font(.headline)
-            .foregroundColor(.black)
-            .frame(maxWidth: .infinity)
-            .frame(height: 50)
-            .background(Color.themeYellow)
-            .cornerRadius(25)
-            .padding(.horizontal, 20)
+            .font(.headline).foregroundColor(.black)
+            .frame(maxWidth: .infinity).frame(height: 44)
+            .background(Color(hex: "#F5C842"))
+            .cornerRadius(22)
             .disabled(authViewModel.isLoading || passcodeInput.count != 6)
 
             Text("Enter your 6-digit student passcode to sign in")
-                .font(.caption)
-                .foregroundColor(.white.opacity(0.4))
+                .font(.caption).foregroundColor(.gray)
         }
         .onAppear { focusedField = .passcode }
     }
@@ -174,55 +135,27 @@ struct PasscodeGateView: View {
     // MARK: - Register
 
     private var registerView: some View {
-        VStack(spacing: 20) {
+        VStack(spacing: 16) {
             if let passcode = registeredPasscode {
                 VStack(spacing: 16) {
-                    Image(systemName: "checkmark.circle.fill")
-                        .font(.system(size: 48))
-                        .foregroundColor(.green)
-                    Text("Registration Successful!")
-                        .font(.headline)
-                        .foregroundColor(.white)
-                    Text("Your passcode is:")
-                        .foregroundColor(.white.opacity(0.7))
-                    Text(passcode)
-                        .font(.system(size: 32, design: .monospaced))
-                        .fontWeight(.bold)
-                        .foregroundColor(.themeYellow)
-                        .padding()
-                        .background(RoundedRectangle(cornerRadius: 12).stroke(Color.themeYellow, lineWidth: 1))
-                    Text("Save this passcode to sign in later")
-                        .font(.caption)
-                        .foregroundColor(.white.opacity(0.5))
-                    Button("Sign In") {
-                        selectedTab = .student
-                        registeredPasscode = nil
-                    }
-                    .font(.headline)
-                    .foregroundColor(.black)
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 50)
-                    .background(Color.themeYellow)
-                    .cornerRadius(25)
-                    .padding(.horizontal, 20)
+                    Image(systemName: "checkmark.circle.fill").font(.system(size: 40)).foregroundColor(.green)
+                    Text("Registration Successful!").font(.headline).foregroundColor(.black)
+                    Text("Your passcode is:").foregroundColor(.gray)
+                    Text(passcode).font(.system(size: 28, design: .monospaced)).fontWeight(.bold).foregroundColor(.black)
+                        .padding().background(RoundedRectangle(cornerRadius: 10).stroke(Color.gray.opacity(0.3), lineWidth: 1))
+                    Text("Save this passcode to sign in later").font(.caption).foregroundColor(.gray)
+                    Button("Sign In") { selectedTab = .student; registeredPasscode = nil }
+                        .font(.headline).foregroundColor(.black)
+                        .frame(maxWidth: .infinity).frame(height: 44)
+                        .background(Color(hex: "#F5C842")).cornerRadius(22)
                 }
             } else {
-                Text("Register a New Account")
-                    .font(.headline)
-                    .foregroundColor(.white.opacity(0.9))
+                Text("Register a New Account").font(.headline).foregroundColor(.black)
 
                 TextField("Your Name", text: $registerName)
-                    .textFieldStyle(.plain)
-                    .padding()
-                    .background(
-                        RoundedRectangle(cornerRadius: 12)
-                            .stroke(Color.white.opacity(0.2), lineWidth: 1)
-                    )
-                    .background(
-                        RoundedRectangle(cornerRadius: 12)
-                            .fill(Color.white.opacity(0.05))
-                    )
-                    .foregroundColor(.white)
+                    .textFieldStyle(.plain).padding()
+                    .background(RoundedRectangle(cornerRadius: 10).stroke(Color.gray.opacity(0.3), lineWidth: 1))
+                    .foregroundColor(.black)
                     .focused($focusedField, equals: .register)
                     .autocapitalization(.words)
 
@@ -230,13 +163,9 @@ struct PasscodeGateView: View {
                     guard !registerName.trimmingCharacters(in: .whitespaces).isEmpty else { return }
                     submitRegistration()
                 }
-                .font(.headline)
-                .foregroundColor(.black)
-                .frame(maxWidth: .infinity)
-                .frame(height: 50)
-                .background(Color.themeYellow)
-                .cornerRadius(25)
-                .padding(.horizontal, 20)
+                .font(.headline).foregroundColor(.black)
+                .frame(maxWidth: .infinity).frame(height: 44)
+                .background(Color(hex: "#F5C842")).cornerRadius(22)
                 .disabled(authViewModel.isLoading || registerName.trimmingCharacters(in: .whitespaces).isEmpty)
             }
         }
@@ -246,40 +175,20 @@ struct PasscodeGateView: View {
     // MARK: - Admin Login
 
     private var adminLoginView: some View {
-        VStack(spacing: 20) {
-            Text("Admin Login")
-                .font(.headline)
-                .foregroundColor(.white.opacity(0.9))
+        VStack(spacing: 16) {
+            Text("Admin Login").font(.headline).foregroundColor(.black)
 
             VStack(spacing: 12) {
                 TextField("Email", text: $adminEmail)
-                    .textFieldStyle(.plain)
-                    .padding()
-                    .background(
-                        RoundedRectangle(cornerRadius: 12)
-                            .stroke(Color.white.opacity(0.2), lineWidth: 1)
-                    )
-                    .background(
-                        RoundedRectangle(cornerRadius: 12)
-                            .fill(Color.white.opacity(0.05))
-                    )
-                    .foregroundColor(.white)
-                    .keyboardType(.emailAddress)
-                    .autocapitalization(.none)
+                    .textFieldStyle(.plain).padding()
+                    .background(RoundedRectangle(cornerRadius: 10).stroke(Color.gray.opacity(0.3), lineWidth: 1))
+                    .foregroundColor(.black).keyboardType(.emailAddress).autocapitalization(.none)
                     .focused($focusedField, equals: .adminEmail)
 
                 SecureField("Password", text: $adminPassword)
-                    .textFieldStyle(.plain)
-                    .padding()
-                    .background(
-                        RoundedRectangle(cornerRadius: 12)
-                            .stroke(Color.white.opacity(0.2), lineWidth: 1)
-                    )
-                    .background(
-                        RoundedRectangle(cornerRadius: 12)
-                            .fill(Color.white.opacity(0.05))
-                    )
-                    .foregroundColor(.white)
+                    .textFieldStyle(.plain).padding()
+                    .background(RoundedRectangle(cornerRadius: 10).stroke(Color.gray.opacity(0.3), lineWidth: 1))
+                    .foregroundColor(.black)
                     .focused($focusedField, equals: .adminPassword)
             }
 
@@ -287,13 +196,9 @@ struct PasscodeGateView: View {
                 guard !adminEmail.isEmpty, !adminPassword.isEmpty else { return }
                 submitAdminLogin()
             }
-            .font(.headline)
-            .foregroundColor(.black)
-            .frame(maxWidth: .infinity)
-            .frame(height: 50)
-            .background(Color.themeYellow)
-            .cornerRadius(25)
-            .padding(.horizontal, 20)
+            .font(.headline).foregroundColor(.black)
+            .frame(maxWidth: .infinity).frame(height: 44)
+            .background(Color(hex: "#F5C842")).cornerRadius(22)
             .disabled(authViewModel.isLoading)
         }
         .onAppear { focusedField = .adminEmail }
@@ -316,19 +221,30 @@ struct PasscodeGateView: View {
         Task {
             localError = nil
             let (passcode, error) = await authViewModel.passcodeRegister(name: registerName)
-            if let error {
-                localError = error
-            } else if let passcode {
-                registeredPasscode = passcode
-            }
+            if let error { localError = error }
+            else if let passcode { registeredPasscode = passcode }
         }
     }
 
     private func submitAdminLogin() {
-        Task {
-            localError = nil
-            await authViewModel.login(email: adminEmail, password: adminPassword)
-        }
+        Task { localError = nil; await authViewModel.login(email: adminEmail, password: adminPassword) }
+    }
+}
+
+// MARK: - Color Extension
+
+extension Color {
+    init(hex: String) {
+        let hex = hex.trimmingCharacters(in: CharacterSet.alphanumerics.inverted)
+        var int: UInt64 = 0
+        Scanner(string: hex).scanHexInt64(&int)
+        self.init(
+            .sRGB,
+            red: Double((int >> 16) & 0xFF) / 255,
+            green: Double((int >> 8) & 0xFF) / 255,
+            blue: Double(int & 0xFF) / 255,
+            opacity: 1
+        )
     }
 }
 
