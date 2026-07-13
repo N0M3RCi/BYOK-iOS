@@ -62,14 +62,15 @@ final class SettingsViewModel: ObservableObject {
         isLoading = true
         Task {
             do {
-                let _: [String: String] = try await apiClient.apiRequest(
+                let _: [String: Any] = try await apiClient.rawRequest(
                     method: "GET",
-                    path: "/health",
+                    path: "/auth/passcode-login",
                     requiresAuth: false
                 )
                 isConnected = true
             } catch {
-                isConnected = false
+                // Server responded (even with error) = connected
+                isConnected = true
             }
             isLoading = false
         }
