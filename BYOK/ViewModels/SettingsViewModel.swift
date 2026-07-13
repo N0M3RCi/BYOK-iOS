@@ -67,24 +67,27 @@ final class SettingsViewModel: ObservableObject {
         isLoading = true
         Task {
             do {
-                let base = APIConfig.shared.apiBaseURL
-                guard let url = URL(string: "\(base)/auth/passcode-login") else {
-                    isConnected = false
-                    isLoading = false
-                    return
+                let brain = APIConfig.shared.brainServiceURL
+                let api = APIConfig.shared.apiBaseURL
+                // Check both endpoints — brain service root + API
+                var brainOK = false
+                var apiOK = false
+                if let brainURL = URL(string: brain) {
+                    var req = URLRequest(url: brainURL)
+                    req.httpMethod = "GET"
+                    req.timeoutInterval = 10
+                    if let (_, r) = try? await URLSession.shared.data(for: req),
+                       r is HTTPURLResponse { brainOK = true }
                 }
-                var request = URLRequest(url: url)
-                request.httpMethod = "GET"
-                request.timeoutInterval = 10
-                let (_, response) = try await URLSession.shared.data(for: request)
-                // Any HTTP response means the server is reachable
-                if response is HTTPURLResponse {
-                    isConnected = true
-                } else {
-                    isConnected = false
+                if let apiURL = URL(string: "\(api)/auth/passcode-login") {
+                    var req = URLRequest(url: apiURL)
+                    req.httpMethod = "GET"
+                    req.timeoutInterval = 10
+                    if let (_, r) = try? await URLSession.shared.data(for: req),
+                       r is HTTPURLResponse { apiOK = true }
                 }
+                isConnected = brainOK || apiOK
             } catch {
-                // Network error (timeout, cannot connect, etc.) = not connected
                 isConnected = false
             }
             isLoading = false
@@ -163,11 +166,9 @@ if let modelType = modelType {
             ]
             if let url = apiUrl, !url.isEmpty { body["api_url"] = url }
 
-            let result: [String: Any] = try await apiClient.rawRequest(
-                method: "POST",
+            let result = try await apiClient.brainRawPost(
                 path: "/provider/test",
-                body: body,
-                requiresAuth: true
+                body: body
             )
             testResult = (result["message"] as? String) ?? (result["text"] as? String) ?? "Connection successful"
             return true
@@ -190,11 +191,20 @@ if let modelType = modelType {
             ]
             if let url = apiUrl, !url.isEmpty { body["api_url"] = url }
 
-            let response: ProviderModelsResponse = try await apiClient.brainPost(
+            let result = try await apiClient.brainRawPost(
                 path: "/model/list",
                 body: body
             )
-            availableModels = response.modelList
+            // Parse models from response (handles multiple response formats)
+            if let models = result["models"] as? [[String: String]] {
+                availableModels = models.map { ProviderModel(id: $0["id"] ?? $0["name"] ?? "", name: $0["name"] ?? $0["id"] ?? "") }
+            } else if let data = result["data"] as? [[String: String]] {
+                availableModels = data.map { ProviderModel(id: $0["id"] ?? $0["name"] ?? "", name: $0["name"] ?? $0["id"] ?? "") }
+            } else if let modelNames = result["modelNames"] as? [String] {
+                availableModels = modelNames.map { ProviderModel(id: $0, name: $0) }
+            } else if let data = result["data"] as? [String: Any], let models = data["models"] as? [[String: String]] {
+                availableModels = models.map { ProviderModel(id: $0["id"] ?? $0["name"] ?? "", name: $0["name"] ?? $0["id"] ?? "") }
+            }
         } catch {
             errorMessage = "Failed to fetch models: \(error.localizedDescription)"
         }

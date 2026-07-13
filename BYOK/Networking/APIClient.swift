@@ -42,7 +42,11 @@ struct APIConfig {
     }
 
     var brainServiceURL: String {
-        brainBaseURL
+        let base = brainBaseURL
+        if base.hasSuffix("/enter") {
+            return String(base.dropLast(6))
+        }
+        return base
     }
 }
 
@@ -195,6 +199,27 @@ final class APIClient: @unchecked Sendable {
 
     func brainPost<T: Decodable>(path: String, body: Encodable? = nil) async throws -> T {
         try await brainRequest(method: "POST", path: path, body: body)
+    }
+
+    func brainRawPost(path: String, body: [String: String]) async throws -> [String: Any] {
+        let baseURL = APIConfig.shared.brainServiceURL
+        guard let url = URL(string: "\(baseURL)\(path)") else {
+            throw APIError.invalidURL
+        }
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        let headers = await authHeaders()
+        headers.forEach { request.setValue($1, forHTTPHeaderField: $0) }
+        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+        let (data, _) = try await session.data(for: request)
+        guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+            throw APIError.decodingError("Invalid JSON response")
+        }
+        if let code = json["code"] as? Int, code != 0 {
+            throw APIError.serverError(json["text"] as? String ?? "Request failed")
+        }
+        return json
     }
 
     func brainPut<T: Decodable>(path: String, body: Encodable? = nil) async throws -> T {
