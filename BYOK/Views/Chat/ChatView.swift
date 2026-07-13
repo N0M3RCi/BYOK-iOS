@@ -1,4 +1,5 @@
 import SwiftUI
+import PhotosUI
 
 struct ChatView: View {
     @StateObject private var viewModel = ChatViewModel()
@@ -8,6 +9,8 @@ struct ChatView: View {
     @State private var feedbackMessageId: String?
     @State private var feedbackRating = 0
     @State private var showKnowledgeBasePicker = false
+    @State private var showImagePicker = false
+    @State private var selectedPhotos: [PhotosPickerItem] = []
 
     init(projectID: String? = nil) {
         self.projectID = projectID
@@ -28,14 +31,24 @@ struct ChatView: View {
                             MessageBubbleView(message: message)
                                 .id(message.id)
                                 .contextMenu {
+                                    if message.role == .user && !message.isStreaming {
+                                        Button("Edit") {
+                                            viewModel.editMessage(id: message.id)
+                                        }
+                                        Button("Copy") {
+                                            UIPasteboard.general.string = message.content
+                                        }
+                                    }
                                     if message.role == .assistant && !message.isStreaming {
                                         Button("Feedback") {
                                             feedbackMessageId = message.id
                                             showFeedback = true
                                         }
-
                                         Button("Copy") {
                                             UIPasteboard.general.string = message.content
+                                        }
+                                        Button("Regenerate") {
+                                            viewModel.regenerateLastResponse()
                                         }
                                     }
                                 }
@@ -73,6 +86,41 @@ struct ChatView: View {
 
                 // Input Area
                 VStack(spacing: 0) {
+                    // Edit mode indicator
+                    if viewModel.editingMessageId != nil {
+                        HStack {
+                            Image(systemName: "pencil.line")
+                                .font(.caption)
+                                .foregroundColor(.orange)
+                            Text("Editing message")
+                                .font(.caption)
+                                .foregroundColor(.orange)
+                            Spacer()
+                            Button("Cancel") { viewModel.cancelEdit() }
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                        .padding(.horizontal)
+                        .padding(.vertical, 6)
+                        .background(Color.orange.opacity(0.08))
+                    }
+
+                    // Token usage
+                    if let usage = viewModel.tokenUsage {
+                        HStack {
+                            Spacer()
+                            Text("↑\(usage.input) ↓\(usage.output)")
+                                .font(.caption2)
+                                .foregroundColor(.secondary)
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 2)
+                                .background(Color(.systemGray6))
+                                .cornerRadius(4)
+                        }
+                        .padding(.horizontal)
+                        .padding(.top, 4)
+                    }
+
                     if !viewModel.attachedFiles.isEmpty {
                         ScrollView(.horizontal, showsIndicators: false) {
                             HStack {
@@ -100,7 +148,22 @@ struct ChatView: View {
                                 .font(.system(size: 18))
                         }
 
-                        TextField("Message...", text: $viewModel.currentInput)
+                        PhotosPicker(selection: $selectedPhotos, maxSelectionCount: 5, matching: .images) {
+                            Image(systemName: "photo")
+                                .font(.system(size: 18))
+                        }
+                        .onChange(of: selectedPhotos) { newItems in
+                            Task {
+                                for item in newItems {
+                                    if let data = try? await item.loadTransferable(type: Data.self) {
+                                        await viewModel.uploadFile(data: data, filename: "image.jpg")
+                                    }
+                                }
+                                selectedPhotos = []
+                            }
+                        }
+
+                        TextField(viewModel.editingMessageId != nil ? "Edit message..." : "Message...", text: $viewModel.currentInput)
                             .textFieldStyle(.plain)
                             .padding(10)
                             .background(Color(.systemGray6))
@@ -126,6 +189,22 @@ struct ChatView: View {
             .navigationTitle("Chat")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button(action: { viewModel.showModelPicker = true }) {
+                        HStack(spacing: 4) {
+                            Image(systemName: "cpu")
+                                .font(.caption)
+                            Text(viewModel.modelDisplayName)
+                                .font(.caption)
+                                .lineLimit(1)
+                        }
+                        .foregroundColor(.accentTeal)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(Color.accentTeal.opacity(0.1))
+                        .cornerRadius(8)
+                    }
+                }
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Menu {
                         Button("Clear Chat") { viewModel.clearChat() }
@@ -137,6 +216,9 @@ struct ChatView: View {
                         Image(systemName: "ellipsis.circle")
                     }
                 }
+            }
+            .sheet(isPresented: $viewModel.showModelPicker) {
+                modelPickerSheet
             }
             .sheet(isPresented: $showKnowledgeBasePicker) {
                 KnowledgeBaseAttachmentView(selectedIds: $viewModel.attachedKnowledgeBaseIds)
@@ -168,7 +250,42 @@ struct ChatView: View {
         }
     }
 
+    private var modelPickerSheet: some View {
+        NavigationStack {
+            Form {
+                Section("Platform") {
+                    Picker("Platform", selection: $viewModel.selectedPlatform) {
+                        ForEach(ModelPlatform.allCases, id: \.self) { platform in
+                            Text(platform.displayName).tag(platform)
+                        }
+                    }
+                }
+                Section("Model") {
+                    Picker("Model", selection: $viewModel.selectedModel) {
+                        ForEach(ModelType.allCases, id: \.self) { model in
+                            Text(model.displayName).tag(model)
+                        }
+                    }
+                }
+                Section {
+                    Text("Selected: \(viewModel.modelDisplayName)")
+                        .foregroundColor(.secondary)
+                }
+            }
+            .navigationTitle("Chat Model")
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done") { viewModel.showModelPicker = false }
+                }
+            }
+        }
+    }
+
     private func sendMessage() {
+        if viewModel.editingMessageId != nil {
+            viewModel.submitEdit()
+            return
+        }
         let text = viewModel.currentInput.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty else { return }
         if viewModel.currentProjectID != nil {
@@ -237,6 +354,7 @@ struct MessageBubbleView: View {
                 Text(message.content)
                     .font(.body)
                     .foregroundColor(message.role == .user ? .white : .primary)
+                    .textSelection(.enabled)
 
                 if message.isStreaming {
                     ProgressView()
@@ -280,7 +398,7 @@ struct MessageBubbleView: View {
     }
 }
 
-// MARK: - Document Picker (simplified)
+// MARK: - Document Picker
 
 struct DocumentPickerView: UIViewControllerRepresentable {
     var onPick: (Data, String) -> Void

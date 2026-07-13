@@ -16,6 +16,9 @@ final class ChatViewModel: ObservableObject {
     @Published var showReasoning = false
     @Published var attachedFiles: [String] = []
     @Published var attachedKnowledgeBaseIds: [String] = []
+    @Published var editingMessageId: String?
+    @Published var tokenUsage: (input: Int, output: Int)?
+    @Published var showModelPicker = false
 
     private let apiClient = APIClient.shared
     private let keychain = KeychainManager.shared
@@ -255,6 +258,68 @@ final class ChatViewModel: ObservableObject {
         currentProjectID = nil
         currentTaskID = nil
         errorMessage = nil
+        editingMessageId = nil
+        tokenUsage = nil
+    }
+
+    // MARK: - Edit Message
+
+    func editMessage(id: String) {
+        guard let index = messages.firstIndex(where: { $0.id == id }),
+              messages[index].role == .user else { return }
+        editingMessageId = id
+        currentInput = messages[index].content
+    }
+
+    func submitEdit() {
+        guard let id = editingMessageId,
+              let index = messages.firstIndex(where: { $0.id == id }) else {
+            cancelEdit()
+            return
+        }
+        let newContent = currentInput.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !newContent.isEmpty else { return }
+
+        // Remove all messages after the edited one
+        if index + 1 < messages.count {
+            messages = Array(messages[0...index])
+        }
+
+        // Update the message content
+        messages[index].content = newContent
+        editingMessageId = nil
+        currentInput = ""
+
+        // Resend
+        guard let projectID = currentProjectID else { return }
+        let taskID = UUID().uuidString.lowercased()
+        currentTaskID = taskID
+        isLoading = true
+        Task {
+            await sendChatRequest(projectID: projectID, taskID: taskID, question: newContent)
+        }
+    }
+
+    func cancelEdit() {
+        editingMessageId = nil
+        currentInput = ""
+    }
+
+    // MARK: - Regenerate
+
+    func regenerateLastResponse() {
+        guard messages.count >= 2 else { return }
+        if messages.last?.role == .assistant {
+            messages.removeLast()
+        }
+        guard let lastUserMsg = messages.last, lastUserMsg.role == .user,
+              let projectID = currentProjectID else { return }
+        let taskID = UUID().uuidString.lowercased()
+        currentTaskID = taskID
+        isLoading = true
+        Task {
+            await sendChatRequest(projectID: projectID, taskID: taskID, question: lastUserMsg.content)
+        }
     }
 
     // MARK: - Model Provider/Type Helpers
