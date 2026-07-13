@@ -161,16 +161,81 @@ if let modelType = modelType {
             ]
             if let url = apiUrl, !url.isEmpty { body["api_url"] = url }
 
-            let result = try await apiClient.rawRequest(
+            guard let token = KeychainManager.shared.getToken() else {
+                testResult = "Not logged in — no auth token found"
+                return false
+            }
+
+            let base = APIConfig.shared.apiBaseURL
+            guard let url = URL(string: "\(base)/provider/test") else {
+                testResult = "Invalid URL"
+                return false
+            }
+
+            var request = URLRequest(url: url)
+            request.httpMethod = "PUT"
+            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+            request.httpBody = try JSONSerialization.data(withJSONObject: body)
+            request.timeoutInterval = 30
+
+            let (data, response) = try await URLSession.shared.data(for: request)
+            let httpResponse = response as? HTTPURLResponse
+            let statusCode = httpResponse?.statusCode ?? 0
+            let bodyStr = String(data: data, encoding: .utf8) ?? "Non-UTF8 data"
+
+            APIDebugLogger.shared.log(
                 method: "PUT",
-                path: "/provider/test",
-                body: body,
-                requiresAuth: true
+                path: "/api/v1/provider/test",
+                requestBody: body,
+                statusCode: statusCode,
+                responseBody: bodyStr
             )
-            testResult = (result["message"] as? String) ?? (result["text"] as? String) ?? "Connection successful"
-            return true
+
+            guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+                testResult = "Non-JSON response (HTTP \(statusCode)): \(bodyStr.prefix(120))"
+                return false
+            }
+
+            // Try all possible success/error response formats
+            if let code = json["code"] as? Int {
+                if code == 0 {
+                    testResult = json["text"] as? String ?? json["message"] as? String ?? "Connection successful"
+                    return true
+                }
+                let msg = json["text"] as? String
+                    ?? json["message"] as? String
+                    ?? json["error"] as? String
+                    ?? (json["data"] as? [String: Any])?["error"] as? String
+                    ?? (json["data"] as? [String: Any])?["message"] as? String
+                    ?? "Server error (code: \(code))"
+                testResult = msg
+                return false
+            }
+
+            // No code field — check is_valid or other formats
+            if let dataDict = json["data"] as? [String: Any] {
+                if let valid = dataDict["is_valid"] as? Bool {
+                    testResult = dataDict["message"] as? String ?? dataDict["error"] as? String ?? (valid ? "Connected" : "Connection failed")
+                    return valid
+                }
+            }
+
+            if let valid = json["is_valid"] as? Bool {
+                testResult = json["message"] as? String ?? json["error"] as? String ?? (valid ? "Connected" : "Connection failed")
+                return valid
+            }
+
+            if (200...299).contains(statusCode) {
+                testResult = json["text"] as? String ?? json["message"] as? String ?? "Connected"
+                return true
+            }
+
+            testResult = "Unexpected (HTTP \(statusCode)): \(bodyStr.prefix(120))"
+            return false
         } catch {
-            testResult = "Connection failed: \(error.localizedDescription)"
+            let detail = (error as? URLError)?.localizedDescription ?? error.localizedDescription
+            testResult = detail
             return false
         }
     }
@@ -188,24 +253,72 @@ if let modelType = modelType {
             ]
             if let url = apiUrl, !url.isEmpty { body["api_url"] = url }
 
-            let result = try await apiClient.rawRequest(
+            guard let token = KeychainManager.shared.getToken() else {
+                errorMessage = "Not logged in — no auth token found"
+                return
+            }
+
+            let base = APIConfig.shared.apiBaseURL
+            guard let url = URL(string: "\(base)/provider/models") else {
+                errorMessage = "Invalid URL"
+                return
+            }
+
+            var request = URLRequest(url: url)
+            request.httpMethod = "PUT"
+            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+            request.httpBody = try JSONSerialization.data(withJSONObject: body)
+            request.timeoutInterval = 30
+
+            let (data, response) = try await URLSession.shared.data(for: request)
+            let httpResponse = response as? HTTPURLResponse
+            let statusCode = httpResponse?.statusCode ?? 0
+            let bodyStr = String(data: data, encoding: .utf8) ?? "Non-UTF8 data"
+
+            APIDebugLogger.shared.log(
                 method: "PUT",
-                path: "/provider/models",
-                body: body,
-                requiresAuth: true
+                path: "/api/v1/provider/models",
+                requestBody: body,
+                statusCode: statusCode,
+                responseBody: bodyStr
             )
-            // Parse models from response (handles multiple response formats)
-            if let models = result["models"] as? [[String: String]] {
+
+            guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+                errorMessage = "Non-JSON response (HTTP \(statusCode)): \(bodyStr.prefix(120))"
+                return
+            }
+
+            // Check for server error
+            if let code = json["code"] as? Int, code != 0 {
+                let msg = json["text"] as? String
+                    ?? json["message"] as? String
+                    ?? json["error"] as? String
+                    ?? "Server error (code: \(code))"
+                errorMessage = msg
+                return
+            }
+
+            guard (200...299).contains(statusCode) else {
+                errorMessage = "Server error (HTTP \(statusCode))"
+                return
+            }
+
+            // Parse models from response (handles multiple formats)
+            if let models = json["models"] as? [[String: String]] {
                 availableModels = models.map { ProviderModel(id: $0["id"] ?? $0["name"] ?? "", name: $0["name"] ?? $0["id"] ?? "") }
-            } else if let data = result["data"] as? [[String: String]] {
-                availableModels = data.map { ProviderModel(id: $0["id"] ?? $0["name"] ?? "", name: $0["name"] ?? $0["id"] ?? "") }
-            } else if let modelNames = result["modelNames"] as? [String] {
+            } else if let modelsData = json["data"] as? [[String: String]] {
+                availableModels = modelsData.map { ProviderModel(id: $0["id"] ?? $0["name"] ?? "", name: $0["name"] ?? $0["id"] ?? "") }
+            } else if let modelNames = json["modelNames"] as? [String] {
                 availableModels = modelNames.map { ProviderModel(id: $0, name: $0) }
-            } else if let data = result["data"] as? [String: Any], let models = data["models"] as? [[String: String]] {
+            } else if let dataDict = json["data"] as? [String: Any], let models = dataDict["models"] as? [[String: String]] {
                 availableModels = models.map { ProviderModel(id: $0["id"] ?? $0["name"] ?? "", name: $0["name"] ?? $0["id"] ?? "") }
+            } else {
+                errorMessage = "No models found in response"
             }
         } catch {
-            errorMessage = "Failed to fetch models: \(error.localizedDescription)"
+            let detail = (error as? URLError)?.localizedDescription ?? error.localizedDescription
+            errorMessage = detail
         }
     }
 
