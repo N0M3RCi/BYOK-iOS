@@ -12,6 +12,8 @@ struct ContentView: View {
                 PasscodeGateView()
             case .needsSignUp:
                 PasscodeGateView()
+            case .needsLogin:
+                LoginView()
             case .authenticated:
                 MainTabView()
             }
