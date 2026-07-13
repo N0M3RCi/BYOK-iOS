@@ -199,6 +199,7 @@ struct AddProviderView: View {
     @State private var connectionSuccess = false
     @State private var modelsFetched = false
     @State private var selectedModelId: String?
+    @State private var showingDebugLogs = false
 
     var body: some View {
         NavigationStack {
@@ -233,6 +234,12 @@ struct AddProviderView: View {
                                 .foregroundColor(connectionSuccess ? .green : .red)
                             Text(result).font(.caption).foregroundColor(connectionSuccess ? .green : .red)
                         }
+                        if !connectionSuccess {
+                            Button(action: { showingDebugLogs = true }) {
+                                Label("View Debug Log", systemImage: "ladybug")
+                                    .font(.caption).foregroundColor(.orange)
+                            }
+                        }
                     }
                 }
 
@@ -266,13 +273,24 @@ struct AddProviderView: View {
                         }
                     }
 
-                    if let error = viewModel.errorMessage, !viewModel.availableModels.isEmpty {
-                        Section { Text(error).foregroundColor(.red).font(.caption) }
+                    if let error = viewModel.errorMessage {
+                        Section {
+                            Text(error).foregroundColor(.red).font(.caption)
+                            Button(action: { showingDebugLogs = true }) {
+                                Label("View Debug Log", systemImage: "ladybug")
+                                    .font(.caption).foregroundColor(.orange)
+                            }
+                        }
                     }
                 }
             }
             .navigationTitle("Add Provider")
             .toolbar {
+                ToolbarItem(placement: .navigation) {
+                    Button(action: { showingDebugLogs = true }) {
+                        Image(systemName: "ladybug").foregroundColor(.orange)
+                    }
+                }
                 ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") {
@@ -289,6 +307,9 @@ struct AddProviderView: View {
                     .disabled(apiKey.isEmpty)
                 }
             }
+        }
+        .sheet(isPresented: $showingDebugLogs) {
+            DebugLogView()
         }
     }
 
@@ -393,5 +414,73 @@ struct PrivacySettingsView: View {
 }
 
 struct StudentSettingsView: View { var body: some View { AdminUsersView() } }
+
+// MARK: - Debug Log Viewer
+struct DebugLogView: View {
+    @ObservedObject private var logger = APIDebugLogger.shared
+    @Environment(\.dismiss) var dismiss
+
+    private let dateFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "HH:mm:ss.SSS"
+        return f
+    }()
+
+    var body: some View {
+        NavigationStack {
+            List {
+                if logger.entries.isEmpty {
+                    ContentUnavailableView(
+                        "No Logs",
+                        systemImage: "ladybug",
+                        description: Text("API request logs will appear here when you test a connection or fetch models.")
+                    )
+                } else {
+                    ForEach(logger.entries.reversed()) { entry in
+                        VStack(alignment: .leading, spacing: 4) {
+                            HStack {
+                                Text(dateFormatter.string(from: entry.timestamp))
+                                    .font(.caption2).monospacedDigit().foregroundColor(.secondary)
+                                Spacer()
+                                Text(entry.method)
+                                    .font(.caption2).bold().padding(.horizontal, 4).padding(.vertical, 1)
+                                    .background(entry.method == "PUT" ? Color.blue.opacity(0.2) : Color.gray.opacity(0.2))
+                                    .cornerRadius(4)
+                                Text("\(entry.statusCode)")
+                                    .font(.caption2).bold()
+                                    .foregroundColor(entry.statusCode == 200 ? .green : .red)
+                            }
+                            Text(entry.url)
+                                .font(.caption).foregroundColor(.primary).lineLimit(1)
+                            if !entry.responseBody.isEmpty {
+                                Text(entry.responseBody)
+                                    .font(.system(size: 10, design: .monospaced))
+                                    .foregroundColor(.secondary)
+                                    .lineLimit(3)
+                            }
+                            if let error = entry.error {
+                                Text("Error: \(error)")
+                                    .font(.caption2).foregroundColor(.red)
+                            }
+                        }
+                        .padding(.vertical, 2)
+                    }
+                }
+            }
+            .navigationTitle("API Debug Log")
+            .toolbar {
+                ToolbarItem(placement: .primaryAction) {
+                    Button(action: { logger.clear() }) {
+                        Image(systemName: "trash")
+                    }
+                    .disabled(logger.entries.isEmpty)
+                }
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Close") { dismiss() }
+                }
+            }
+        }
+    }
+}
 
 #Preview { SettingsView().environmentObject(AuthViewModel()).environmentObject(ThemeManager()) }

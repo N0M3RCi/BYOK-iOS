@@ -1,7 +1,8 @@
 import Foundation
+import Combine
 
 /// Captures API request/response details for debugging
-final class APIDebugLogger: @unchecked Sendable {
+final class APIDebugLogger: ObservableObject {
     static let shared = APIDebugLogger()
 
     struct LogEntry: Identifiable {
@@ -15,14 +16,8 @@ final class APIDebugLogger: @unchecked Sendable {
         let error: String?
     }
 
-    private var _entries: [LogEntry] = []
+    @Published var entries: [LogEntry] = []
     private let lock = NSLock()
-
-    var entries: [LogEntry] {
-        lock.lock()
-        defer { lock.unlock() }
-        return Array(_entries.suffix(50))
-    }
 
     func log(
         method: String,
@@ -42,14 +37,15 @@ final class APIDebugLogger: @unchecked Sendable {
             error: error
         )
         lock.lock()
-        _entries.append(entry)
+        entries.append(entry)
+        entries = Array(entries.suffix(50))
         lock.unlock()
         print("[API] \(method) \(path) → \(statusCode): \(responseBody.prefix(200))")
     }
 
     func clear() {
         lock.lock()
-        _entries.removeAll()
+        entries.removeAll()
         lock.unlock()
     }
 }
