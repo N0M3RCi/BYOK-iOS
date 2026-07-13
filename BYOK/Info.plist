@@ -9,6 +9,8 @@
     </dict>
     <key>CFBundleDisplayName</key>
     <string>M3RCI</string>
+    <key>CFBundleIdentifier</key>
+    <string>cc.n0m3rci.byok</string>
     <key>UIRequiredDeviceCapabilities</key>
     <array>
         <string>arm64</string>
