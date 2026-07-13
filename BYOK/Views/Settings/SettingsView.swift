@@ -12,6 +12,7 @@ struct SettingsView: View {
                     NavigationLink(destination: GeneralSettingsView(viewModel: viewModel)) { Label("General", systemImage: "gear") }
                     NavigationLink(destination: ModelSettingsView(viewModel: viewModel)) { Label("Models", systemImage: "cpu") }
                     NavigationLink(destination: APISettingsView(viewModel: viewModel)) { Label("API", systemImage: "antenna.radiowaves.left.and.right") }
+                    NavigationLink(destination: UsageDashboardView()) { Label("Usage", systemImage: "chart.bar.fill") }
                     NavigationLink(destination: PrivacySettingsView()) { Label("Privacy", systemImage: "hand.raised") }
                     if authViewModel.user?.role == .admin { NavigationLink(destination: StudentSettingsView()) { Label("Students", systemImage: "person.2") } }
                 }

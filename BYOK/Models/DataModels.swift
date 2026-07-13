@@ -745,6 +745,40 @@ struct MessageFeedback: Identifiable, Codable {
     }
 }
 
+// MARK: - Usage Tracking
+struct ProviderUsage: Codable, Identifiable, Equatable {
+    let id: String
+    let providerName: String
+    let modelType: String
+    let inputTokens: Int
+    let outputTokens: Int
+    let cost: Double?
+    let date: String
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case providerName = "provider_name"
+        case modelType = "model_type"
+        case inputTokens = "input_tokens"
+        case outputTokens = "output_tokens"
+        case cost, date
+    }
+}
+
+struct UsageSummary: Codable, Equatable {
+    let totalInputTokens: Int
+    let totalOutputTokens: Int
+    let totalCost: Double?
+    let totalRequests: Int?
+
+    enum CodingKeys: String, CodingKey {
+        case totalInputTokens = "total_input_tokens"
+        case totalOutputTokens = "total_output_tokens"
+        case totalCost = "total_cost"
+        case totalRequests = "total_requests"
+    }
+}
+
 // MARK: - Knowledge Base
 struct KnowledgeBase: Codable, Identifiable, Equatable {
     let id: String
