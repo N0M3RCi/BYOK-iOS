@@ -8,6 +8,7 @@ final class AuthViewModel: ObservableObject {
         case unknown
         case needsPasscode
         case needsSignUp
+        case needsLogin
         case authenticated
     }
 
