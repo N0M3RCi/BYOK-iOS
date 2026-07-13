@@ -18,7 +18,7 @@ struct MCPView: View {
                 .onDelete { indexSet in
                     for index in indexSet {
                         Task {
-                            try? await APIClient.shared.brainDelete(path: "/mcp/\(viewModel.mcpServers[index].name)")
+                            let _: EmptyResponse? = try? await APIClient.shared.brainDelete(path: "/mcp/\(viewModel.mcpServers[index].name)")
                             await viewModel.loadAll()
                         }
                     }
@@ -56,7 +56,7 @@ struct InstallMCPView: View {
                     Button("Install") {
                         Task {
                             let config = MCPConfig(command: command, args: args.split(separator: " ").map(String.init), env: envVars)
-                            try? await APIClient.shared.brainPost(path: "/mcp/install", body: MCPInstallRequest(name: name, mcp: config))
+                            let _: EmptyResponse? = try? await APIClient.shared.brainPost(path: "/mcp/install", body: MCPInstallRequest(name: name, mcp: config))
                             await viewModel.loadAll(); dismiss()
                         }
                     }.disabled(name.isEmpty || command.isEmpty)
