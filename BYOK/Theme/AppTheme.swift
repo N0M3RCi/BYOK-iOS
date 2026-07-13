@@ -1,7 +1,8 @@
 import SwiftUI
 
 /// Manages the app's theme (light/dark/system) and persists the preference.
-final class ThemeManager: ObservableObject, @unchecked Sendable {
+@MainActor
+final class ThemeManager: ObservableObject {
     static let shared = ThemeManager()
     @Published var currentTheme: AppTheme = {
         let raw = UserDefaults.standard.string(forKey: "app_theme") ?? AppTheme.system.rawValue

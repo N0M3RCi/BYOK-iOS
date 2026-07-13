@@ -11,6 +11,7 @@ final class AgentsViewModel: ObservableObject {
     @Published var showInstallMCP = false
     @Published var newMCPName = ""
     @Published var newMCPCommand = ""
+    @Published var newMCPArgs = ""
 
     private let apiClient = APIClient.shared
 
