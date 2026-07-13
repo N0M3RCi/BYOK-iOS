@@ -27,7 +27,7 @@ final class TriggersViewModel: ObservableObject {
                 "config": AnyEncodable(config ?? TriggerConfig(schedule: nil, webhookUrl: nil, slackChannel: nil))
             ]
             let _: Trigger = try await apiClient.apiRequest(method: "POST", path: "/trigger", body: body)
-            await loadTriggers()
+            loadTriggers()
         } catch { errorMessage = error.localizedDescription }
     }
 
@@ -37,14 +37,14 @@ final class TriggersViewModel: ObservableObject {
             let _: Trigger = try await apiClient.apiRequest(
                 method: "PUT", path: "/trigger/\(trigger.id)", body: body
             )
-            await loadTriggers()
+            loadTriggers()
         } catch { errorMessage = error.localizedDescription }
     }
 
     func deleteTrigger(_ id: String) async {
         do {
             let _: EmptyResponse = try await apiClient.apiRequest(method: "DELETE", path: "/trigger/\(id)")
-            await loadTriggers()
+            loadTriggers()
         } catch { errorMessage = error.localizedDescription }
     }
 
