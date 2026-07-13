@@ -7,7 +7,6 @@ final class AuthViewModel: ObservableObject {
     enum AuthState: Equatable {
         case unknown
         case needsPasscode
-        case needsLogin
         case needsSignUp
         case authenticated
     }
@@ -127,39 +126,6 @@ final class AuthViewModel: ObservableObject {
             return text
         } catch {
             return error.localizedDescription
-        }
-    }
-
-    // MARK: - Sign Up (email/password)
-
-    func signUp(email: String, password: String, confirmPassword: String) async {
-        isLoading = true
-        errorMessage = nil
-        defer { isLoading = false }
-
-        guard password == confirmPassword else {
-            errorMessage = "Passwords do not match"
-            return
-        }
-
-        do {
-            let response = try await apiClient.rawRequest(
-                method: "POST",
-                path: "/auth/register",
-                body: ["email": email, "password": password]
-            )
-            if let token = response["access_token"] as? String {
-                self.token = token
-                keychain.saveToken(token)
-                keychain.saveEmail(email)
-                authState = .authenticated
-            } else if let detail = response["detail"] as? String {
-                errorMessage = detail
-            } else {
-                errorMessage = "Sign up failed"
-            }
-        } catch {
-            errorMessage = error.localizedDescription
         }
     }
 

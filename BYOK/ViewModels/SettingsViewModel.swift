@@ -117,7 +117,7 @@ final class SettingsViewModel: ObservableObject {
                 path: "/provider",
                 body: body
             )
-            if let modelType = modelType {
+if let modelType = modelType {
                 let modelBody: [String: String] = [
                     "provider_id": provider.id,
                     "model_type": modelType

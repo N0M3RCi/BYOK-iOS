@@ -2,133 +2,295 @@ import SwiftUI
 
 struct ChatView: View {
     @StateObject private var viewModel = ChatViewModel()
-    @State private var showModelPicker = false
-    @State private var showAttachmentPicker = false
-    @State private var isShowingHistory = false
-    var projectID: String?
+    @State private var showFilePicker = false
+    @State private var showFeedback = false
+    @State private var feedbackMessageId: String?
+    @State private var feedbackRating = 0
 
     var body: some View {
-        VStack(spacing: 0) {
-            modelBar
-            ScrollViewReader { proxy in
-                ScrollView {
-                    LazyVStack(spacing: 12) {
-                        if viewModel.messages.isEmpty { emptyState }
+        NavigationStack {
+            VStack(spacing: 0) {
+                // Messages List
+                ScrollViewReader { proxy in
+                    List {
                         ForEach(viewModel.messages) { message in
-                            ChatBubbleView(message: message).id(message.id)
-                        }
-                        if viewModel.isLoading && viewModel.messages.isEmpty {
-                            HStack { ProgressView(); Text("Thinking...").foregroundColor(.secondary).padding(.leading, 8) }.padding()
-                        }
-                    }.padding()
-                }
-                .onChange(of: viewModel.messages.count) { _ in
-                    if let last = viewModel.messages.last { withAnimation { proxy.scrollTo(last.id, anchor: .bottom) } }
-                }
-            }
-            inputBar
-        }
-        .navigationTitle("Chat").navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            ToolbarItem(placement: .navigationBarTrailing) {
-                HStack(spacing: 16) {
-                    Button(action: { showModelPicker = true }) { Image(systemName: "cpu") }
-                    Button(action: { isShowingHistory = true }) { Image(systemName: "clock.arrow.circlepath") }
-                    if !viewModel.messages.isEmpty { Button(action: { viewModel.clearChat() }) { Image(systemName: "plus.bubble") } }
-                }
-            }
-        }
-        .sheet(isPresented: $showModelPicker) { modelPickerSheet }
-        .sheet(isPresented: $isShowingHistory) { HistoryListView() }
-        .sheet(isPresented: $showAttachmentPicker) { attachmentPickerSheet }
-        .alert("Error", isPresented: .init(get: { viewModel.errorMessage != nil }, set: { if !$0 { viewModel.errorMessage = nil } })) { Text(viewModel.errorMessage ?? "") }
-    }
+                            MessageBubbleView(message: message)
+                                .id(message.id)
+                                .contextMenu {
+                                    if message.role == .assistant && !message.isStreaming {
+                                        Button("Feedback") {
+                                            feedbackMessageId = message.id
+                                            showFeedback = true
+                                        }
 
-    private var modelBar: some View {
-        HStack {
-            Image(systemName: "cpu").font(.caption).foregroundColor(.accentTeal)
-            Text(viewModel.modelDisplayName).font(.caption).fontWeight(.medium)
-            Spacer()
-            if viewModel.isStreaming {
-                Button(action: { viewModel.stopStreaming() }) {
-                    HStack(spacing: 4) {
-                        Image(systemName: "stop.fill").font(.caption); Text("Stop").font(.caption)
+                                        Button("Copy") {
+                                            UIPasteboard.general.string = message.content
+                                        }
+                                    }
+                                }
+                        }
                     }
-                    .foregroundColor(.white).padding(.horizontal, 10).padding(.vertical, 4)
-                    .background(Color.red).cornerRadius(8)
+                    .listStyle(.plain)
+                    .onChange(of: viewModel.messages.count) { _ in
+                        if let last = viewModel.messages.last {
+                            withAnimation { proxy.scrollTo(last.id, anchor: .bottom) }
+                        }
+                    }
+                }
+                .overlay {
+                    if viewModel.messages.isEmpty && !viewModel.isLoading {
+                        emptyChatView
+                    }
+                    if let error = viewModel.errorMessage {
+                        VStack {
+                            HStack {
+                                Text(error)
+                                    .font(.caption)
+                                    .foregroundColor(.red)
+                                Spacer()
+                                Button("X") { viewModel.errorMessage = nil }
+                                    .font(.caption)
+                            }
+                            .padding()
+                            .background(Color.red.opacity(0.1))
+                            .cornerRadius(8)
+                            .padding()
+                            Spacer()
+                        }
+                    }
+                }
+
+                // Input Area
+                VStack(spacing: 0) {
+                    if !viewModel.attachedFiles.isEmpty {
+                        ScrollView(.horizontal, showsIndicators: false) {
+                            HStack {
+                                ForEach(viewModel.attachedFiles, id: \.self) { file in
+                                    HStack {
+                                        Image(systemName: "doc.fill")
+                                            .font(.caption)
+                                        Text(file)
+                                            .font(.caption)
+                                    }
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 4)
+                                    .background(Color(.systemGray6))
+                                    .cornerRadius(6)
+                                }
+                            }
+                            .padding(.horizontal)
+                        }
+                        .padding(.vertical, 4)
+                    }
+
+                    HStack(spacing: 8) {
+                        Button(action: { showFilePicker = true }) {
+                            Image(systemName: "paperclip")
+                                .font(.system(size: 18))
+                        }
+
+                        TextField("Message...", text: $viewModel.currentInput)
+                            .textFieldStyle(.plain)
+                            .padding(10)
+                            .background(Color(.systemGray6))
+                            .cornerRadius(20)
+
+                        if viewModel.isStreaming {
+                            Button(action: { viewModel.stopStreaming() }) {
+                                Image(systemName: "stop.fill")
+                                    .foregroundColor(.red)
+                            }
+                        } else {
+                            Button(action: sendMessage) {
+                                Image(systemName: "arrow.up.circle.fill")
+                                    .font(.system(size: 28))
+                                    .foregroundColor(viewModel.currentInput.isEmpty ? .gray : .accentTeal)
+                            }
+                            .disabled(viewModel.currentInput.isEmpty || viewModel.isLoading)
+                        }
+                    }
+                    .padding()
+                }
+            }
+            .navigationTitle("Chat")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Menu {
+                        Button("Clear Chat") { viewModel.clearChat() }
+                        Button("Upload File") { showFilePicker = true }
+                    } label: {
+                        Image(systemName: "ellipsis.circle")
+                    }
+                }
+            }
+            .sheet(isPresented: $showFilePicker) {
+                DocumentPickerView { data, filename in
+                    Task { await viewModel.uploadFile(data: data, filename: filename) }
+                }
+            }
+            .sheet(isPresented: $showFeedback) {
+                if let messageId = feedbackMessageId {
+                    feedbackView(messageId: messageId)
                 }
             }
         }
-        .padding(.horizontal).padding(.vertical, 8).background(Color(.systemGray6))
     }
 
-    private var emptyState: some View {
+    private var emptyChatView: some View {
         VStack(spacing: 16) {
-            Spacer().frame(height: 60)
-            Image(systemName: "bubble.left.and.bubble.right").font(.system(size: 48)).foregroundColor(.accentTeal.opacity(0.5))
-            Text("Start a conversation").font(.title3).foregroundColor(.secondary)
-        }.frame(maxWidth: .infinity)
-    }
-
-    private var inputBar: some View {
-        VStack(spacing: 0) {
-            Divider()
-            HStack(spacing: 8) {
-                Button(action: { showAttachmentPicker = true }) { Image(systemName: "paperclip").font(.title3).foregroundColor(.secondary) }
-                TextField("Type a message...", text: $viewModel.currentInput, axis: .vertical)
-                    .textFieldStyle(.plain).padding(.horizontal, 12).padding(.vertical, 8)
-                    .background(Color(.systemGray6)).cornerRadius(20).lineLimit(1...5)
-                Button(action: sendMessage) {
-                    Image(systemName: "arrow.up.circle.fill").font(.title2)
-                        .foregroundColor(viewModel.currentInput.isEmpty ? .gray : .accentTeal)
-                }.disabled(viewModel.currentInput.isEmpty)
-            }.padding(.horizontal, 12).padding(.vertical, 8)
-        }.background(Color(.systemBackground))
+            Image(systemName: "message.fill")
+                .font(.system(size: 48))
+                .foregroundColor(.accentTeal.opacity(0.5))
+            Text("Start a conversation")
+                .font(.title2)
+                .foregroundColor(.secondary)
+            Text("Type a message below to begin chatting with the AI")
+                .font(.subheadline)
+                .foregroundColor(.secondary)
+        }
     }
 
     private func sendMessage() {
         let text = viewModel.currentInput.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty else { return }
-        if viewModel.messages.isEmpty { viewModel.startNewChat(question: text) }
-        else { viewModel.sendFollowUp(question: text) }
-    }
-
-    private var modelPickerSheet: some View {
-        NavigationStack {
-            List {
-                Section("Platform") {
-                    ForEach(viewModel.availablePlatforms, id: \.self) { platform in
-                        Button(action: { viewModel.selectedPlatform = platform }) {
-                            HStack { Text(platform.displayName); Spacer(); if platform == viewModel.selectedPlatform { Image(systemName: "checkmark").foregroundColor(.accentTeal) } }
-                        }.foregroundColor(.primary)
-                    }
-                }
-                Section("Model") {
-                    ForEach(viewModel.availableModels, id: \.self) { model in
-                        Button(action: { viewModel.selectedModel = model }) {
-                            HStack { Text(model.displayName); Spacer(); if model == viewModel.selectedModel { Image(systemName: "checkmark").foregroundColor(.accentTeal) } }
-                        }.foregroundColor(.primary)
-                    }
-                }
-            }
-            .navigationTitle("Select Model")
-            .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { showModelPicker = false } } }
+        if viewModel.currentProjectID != nil {
+            viewModel.sendFollowUp(question: text)
+        } else {
+            viewModel.startNewChat(question: text)
         }
     }
 
-    private var attachmentPickerSheet: some View {
+    private func feedbackView(messageId: String) -> some View {
         NavigationStack {
-            VStack(spacing: 24) {
-                Button(action: {}) { Label("Photo Library", systemImage: "photo.on.rectangle").frame(maxWidth: .infinity).padding().background(Color(.systemGray6)).cornerRadius(12) }
-                Button(action: {}) { Label("Documents", systemImage: "doc.fill").frame(maxWidth: .infinity).padding().background(Color(.systemGray6)).cornerRadius(12) }
-                Button(action: {}) { Label("Camera", systemImage: "camera.fill").frame(maxWidth: .infinity).padding().background(Color(.systemGray6)).cornerRadius(12) }
-                Spacer()
-            }.padding().navigationTitle("Attach File")
-            .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Cancel") { showAttachmentPicker = false } } }
+            Form {
+                Section("Rate this response") {
+                    Picker("Rating", selection: $feedbackRating) {
+                        Text("1").tag(1)
+                        Text("2").tag(2)
+                        Text("3").tag(3)
+                        Text("4").tag(4)
+                        Text("5").tag(5)
+                    }
+                    .pickerStyle(.segmented)
+                }
+                Section {
+                    Button("Submit Feedback") {
+                        Task {
+                            let _ = MessageFeedback(
+                                messageId: messageId,
+                                rating: feedbackRating
+                            )
+                        }
+                        showFeedback = false
+                    }
+                }
+            }
+            .navigationTitle("Feedback")
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { showFeedback = false }
+                }
+            }
         }
     }
 }
 
-#Preview {
-    NavigationStack { ChatView().environmentObject(AuthViewModel()).environmentObject(ThemeManager()) }
+// MARK: - Message Bubble
+
+struct MessageBubbleView: View {
+    let message: ChatMessage
+
+    var body: some View {
+        HStack {
+            if message.role == .user {
+                Spacer(minLength: 40)
+            }
+
+            VStack(alignment: message.role == .user ? .trailing : .leading, spacing: 4) {
+                if let reasoning = message.reasoning, !reasoning.isEmpty {
+                    Text(reasoning)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                        .padding(8)
+                        .background(Color(.systemGray6))
+                        .cornerRadius(8)
+                }
+
+                Text(message.content)
+                    .font(.body)
+                    .foregroundColor(message.role == .user ? .white : .primary)
+
+                if message.isStreaming {
+                    ProgressView()
+                        .scaleEffect(0.5)
+                }
+
+                if let executions = message.taskExecutions, !executions.isEmpty {
+                    VStack(alignment: .leading, spacing: 4) {
+                        ForEach(executions) { execution in
+                            HStack {
+                                Circle()
+                                    .fill(execution.status == "completed" ? Color.green : (execution.status == "running" ? Color.blue : Color.gray))
+                                    .frame(width: 8, height: 8)
+                                Text(execution.agentName ?? execution.agent ?? "Agent")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                                if let progress = execution.progress {
+                                    ProgressView(value: progress, total: 1.0)
+                                        .scaleEffect(0.6)
+                                }
+                                Spacer()
+                                Text(execution.status)
+                                    .font(.caption2)
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                    }
+                    .padding(8)
+                    .background(Color(.systemGray6))
+                    .cornerRadius(8)
+                }
+            }
+            .padding(12)
+            .background(message.role == .user ? Color.accentTeal : Color(.systemGray5))
+            .cornerRadius(16)
+
+            if message.role == .assistant {
+                Spacer(minLength: 40)
+            }
+        }
+    }
+}
+
+// MARK: - Document Picker (simplified)
+
+struct DocumentPickerView: UIViewControllerRepresentable {
+    var onPick: (Data, String) -> Void
+
+    func makeUIViewController(context: Context) -> UIDocumentPickerViewController {
+        let picker = UIDocumentPickerViewController(forOpeningContentTypes: [.data])
+        picker.delegate = context.coordinator
+        return picker
+    }
+
+    func updateUIViewController(_ uiViewController: UIDocumentPickerViewController, context: Context) {}
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(onPick: onPick)
+    }
+
+    class Coordinator: NSObject, UIDocumentPickerDelegate {
+        var onPick: (Data, String) -> Void
+        init(onPick: @escaping (Data, String) -> Void) { self.onPick = onPick }
+
+        func documentPicker(_ controller: UIDocumentPickerViewController, didPickDocumentsAt urls: [URL]) {
+            guard let url = urls.first else { return }
+            guard url.startAccessingSecurityScopedResource() else { return }
+            defer { url.stopAccessingSecurityScopedResource() }
+            if let data = try? Data(contentsOf: url) {
+                onPick(data, url.lastPathComponent)
+            }
+        }
+    }
 }
