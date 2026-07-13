@@ -30,7 +30,7 @@ struct APIConfig {
     static let shared = APIConfig()
 
     var brainBaseURL: String {
-        UserDefaults.standard.string(forKey: "brain_endpoint") ?? "https://class.n0m3rci.cc/enter"
+        UserDefaults.standard.string(forKey: "brain_endpoint") ?? "https://class.n0m3rci.cc"
     }
 
     var apiBaseURL: String {
