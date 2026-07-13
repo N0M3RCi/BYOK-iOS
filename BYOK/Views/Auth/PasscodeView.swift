@@ -148,7 +148,7 @@ struct PasscodeGateView: View {
     }
 
     @State private var selectedTab: PasscodeTab = .student
-    @State private var passcodeDigits: [String] = Array(repeating: "", count: 6)
+    @State private var passcodeInput = ""
     @State private var registerName = ""
     @State private var adminEmail = ""
     @State private var adminPassword = ""
@@ -242,32 +242,25 @@ struct PasscodeGateView: View {
                 .font(.headline)
                 .foregroundColor(.white)
 
-            HStack(spacing: 10) {
-                ForEach(0..<6, id: \.self) { index in
-                    PasscodeDigitBox(text: $passcodeDigits[index], index: index)
-                }
-            }
-
-            // Hidden text field to capture keyboard input
-            TextField("", text: $passcodeDigits[0])
+            TextField("Passcode", text: $passcodeInput)
                 .focused($focusedField, equals: .passcode)
                 .keyboardType(.numberPad)
-                .opacity(0)
-                .frame(width: 0, height: 0)
-                .onChange(of: passcodeDigits.joined()) { newValue in
-                    let digits = newValue.filter(\.isNumber)
-                    for i in 0..<6 {
-                        passcodeDigits[i] = i < digits.count ? String(digits[digits.index(digits.startIndex, offsetBy: i)]) : ""
-                    }
-                    if digits.count == 6 {
-                        submitPasscode(digits)
-                    }
+                .textContentType(.oneTimeCode)
+                .multilineTextAlignment(.center)
+                .font(.system(size: 24, design: .monospaced))
+                .foregroundColor(.themeYellow)
+                .frame(height: 52)
+                .background(RoundedRectangle(cornerRadius: 10).stroke(Color.white.opacity(0.3), lineWidth: 1.5))
+                .padding(.horizontal, 40)
+                .onChange(of: passcodeInput) { newValue in
+                    let filtered = String(newValue.filter(\.isNumber).prefix(6))
+                    if filtered != newValue { passcodeInput = filtered }
+                    if filtered.count == 6 { submitPasscode(filtered) }
                 }
 
             Button("Sign In") {
-                let code = passcodeDigits.joined()
-                guard code.count == 6 else { return }
-                submitPasscode(code)
+                guard passcodeInput.count == 6 else { return }
+                submitPasscode(passcodeInput)
             }
             .font(.headline)
             .foregroundColor(.black)
@@ -275,7 +268,7 @@ struct PasscodeGateView: View {
             .padding(.vertical, 14)
             .background(Color.themeYellow)
             .cornerRadius(12)
-            .disabled(authViewModel.isLoading)
+            .disabled(authViewModel.isLoading || passcodeInput.count != 6)
 
             Text("Enter your 6-digit student passcode to sign in")
                 .font(.caption)
@@ -395,7 +388,7 @@ struct PasscodeGateView: View {
             localError = nil
             if let error = await authViewModel.passcodeLogin(code: code) {
                 localError = error
-                passcodeDigits = Array(repeating: "", count: 6)
+                passcodeInput = ""
                 focusedField = .passcode
             }
         }
@@ -421,20 +414,3 @@ struct PasscodeGateView: View {
     }
 }
 
-// MARK: - Passcode Digit Box
-
-struct PasscodeDigitBox: View {
-    @Binding var text: String
-    let index: Int
-
-    var body: some View {
-        Text(text.isEmpty ? "" : text)
-            .font(.system(size: 24, weight: .bold))
-            .foregroundColor(.themeYellow)
-            .frame(width: 44, height: 52)
-            .background(
-                RoundedRectangle(cornerRadius: 10)
-                    .stroke(text.isEmpty ? Color.white.opacity(0.3) : Color.themeYellow, lineWidth: 1.5)
-            )
-    }
-}
