@@ -161,9 +161,11 @@ if let modelType = modelType {
             ]
             if let url = apiUrl, !url.isEmpty { body["api_url"] = url }
 
-            let result = try await apiClient.brainRawPost(
+            let result = try await apiClient.rawRequest(
+                method: "POST",
                 path: "/provider/test",
-                body: body
+                body: body,
+                requiresAuth: true
             )
             testResult = (result["message"] as? String) ?? (result["text"] as? String) ?? "Connection successful"
             return true
@@ -186,9 +188,11 @@ if let modelType = modelType {
             ]
             if let url = apiUrl, !url.isEmpty { body["api_url"] = url }
 
-            let result = try await apiClient.brainRawPost(
+            let result = try await apiClient.rawRequest(
+                method: "POST",
                 path: "/model/list",
-                body: body
+                body: body,
+                requiresAuth: true
             )
             // Parse models from response (handles multiple response formats)
             if let models = result["models"] as? [[String: String]] {

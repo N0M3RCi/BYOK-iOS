@@ -147,17 +147,35 @@ final class APIClient: @unchecked Sendable {
             request.httpBody = try JSONSerialization.data(withJSONObject: body)
         }
 
-        let (data, _) = try await session.data(for: request)
+        let (data, response) = try await session.data(for: request)
 
-        // Always try to parse JSON body (matches web app handleResponse)
-        guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any] else {
-            throw APIError.decodingError("Invalid JSON response")
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw APIError.invalidResponse
+        }
+
+        // Handle empty responses (204 No Content)
+        if data.isEmpty {
+            if (200...299).contains(httpResponse.statusCode) { return [:] }
+            throw APIError.httpError(statusCode: httpResponse.statusCode, message: "Empty response")
+        }
+
+        // Try to parse JSON body
+        guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+            let bodyStr = String(data: data, encoding: .utf8) ?? "Non-UTF8 data"
+            let snippet = String(bodyStr.prefix(200))
+            throw APIError.decodingError("Invalid JSON from \(path): \(snippet)")
         }
 
         // Check server error format: code !== 0 means error (web app convention)
         if let code = json["code"] as? Int, code != 0 {
             let text = json["text"] as? String ?? "Request failed"
             throw APIError.serverError(text)
+        }
+
+        // For non-2xx responses without a code field, still throw
+        guard (200...299).contains(httpResponse.statusCode) else {
+            let msg = (json["text"] as? String) ?? (json["message"] as? String) ?? "Server error (\(httpResponse.statusCode))"
+            throw APIError.httpError(statusCode: httpResponse.statusCode, message: msg)
         }
 
         return json
@@ -212,9 +230,19 @@ final class APIClient: @unchecked Sendable {
         let headers = await authHeaders()
         headers.forEach { request.setValue($1, forHTTPHeaderField: $0) }
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
-        let (data, _) = try await session.data(for: request)
+        let (data, response) = try await session.data(for: request)
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw APIError.invalidResponse
+        }
+        guard (200...299).contains(httpResponse.statusCode) else {
+            let msg = (try? JSONSerialization.jsonObject(with: data)).flatMap { ($0 as? [String: Any])?["text"] as? String ?? ($0 as? [String: Any])?["message"] as? String }
+                ?? "Server error (\(httpResponse.statusCode))"
+            throw APIError.httpError(statusCode: httpResponse.statusCode, message: msg)
+        }
+        // Handle empty responses (204 No Content)
+        guard !data.isEmpty else { return [:] }
         guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any] else {
-            throw APIError.decodingError("Invalid JSON response")
+            throw APIError.decodingError("Invalid JSON response from \(path)")
         }
         if let code = json["code"] as? Int, code != 0 {
             throw APIError.serverError(json["text"] as? String ?? "Request failed")
