@@ -674,6 +674,7 @@ struct TaskExecution: Codable, Identifiable, Equatable {
     let taskId: String
     let projectId: String?
     let status: String
+    let progress: Double?
     let result: String?
     let agent: String?
     let agentName: String?
@@ -681,7 +682,7 @@ struct TaskExecution: Codable, Identifiable, Equatable {
     let completedAt: String?
 
     enum CodingKeys: String, CodingKey {
-        case id, status, result, agent, agentName
+        case id, status, progress, result, agent, agentName
         case taskId = "task_id"
         case projectId = "project_id"
         case startedAt = "started_at"
@@ -713,5 +714,13 @@ struct MessageFeedback: Identifiable, Codable {
         case id, rating, comment
         case messageId = "message_id"
         case createdAt = "created_at"
+    }
+
+    init(id: String = UUID().uuidString, messageId: String, rating: Int, comment: String? = nil, createdAt: String = ISO8601DateFormatter().string(from: Date())) {
+        self.id = id
+        self.messageId = messageId
+        self.rating = rating
+        self.comment = comment
+        self.createdAt = createdAt
     }
 }
