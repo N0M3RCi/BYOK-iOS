@@ -352,6 +352,7 @@ struct Agent: Codable, Identifiable, Equatable {
     let mcpTools: [String]?
     let customModelConfig: ModelConfig?
     let memorySettings: AgentMemorySettings?
+    let systemPrompt: String?
 
     var id: String { name }
 
@@ -360,6 +361,7 @@ struct Agent: Codable, Identifiable, Equatable {
         case mcpTools = "mcp_tools"
         case customModelConfig = "custom_model_config"
         case memorySettings = "memory_settings"
+        case systemPrompt = "system_prompt"
     }
 }
 

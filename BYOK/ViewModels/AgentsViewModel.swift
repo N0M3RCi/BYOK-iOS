@@ -11,6 +11,7 @@ final class AgentsViewModel: ObservableObject {
     @Published var showInstallMCP = false
     @Published var newMCPName = ""
     @Published var newMCPCommand = ""
+    @Published var agentMemory: String?
 
     private let apiClient = APIClient.shared
 
@@ -71,6 +72,22 @@ final class AgentsViewModel: ObservableObject {
         do {
             let _: EmptyResponse = try await apiClient.brainDelete(path: "/agents/\(name)")
             await fetchAgents()
+        } catch { errorMessage = error.localizedDescription }
+    }
+
+    func fetchAgentMemory(agentName: String) async {
+        do {
+            let response: [String: String] = try await apiClient.brainGet(path: "/agents/\(agentName)/memory")
+            agentMemory = response["memory"]
+        } catch {
+            agentMemory = "No memory data available"
+        }
+    }
+
+    func clearAgentMemory(agentName: String) async {
+        do {
+            let _: EmptyResponse = try await apiClient.brainDelete(path: "/agents/\(agentName)/memory")
+            agentMemory = nil
         } catch { errorMessage = error.localizedDescription }
     }
 }

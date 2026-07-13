@@ -67,18 +67,162 @@ struct AgentDetailView: View {
     @Environment(\.dismiss) var dismiss
     @State private var name: String
     @State private var description: String
+    @State private var systemPrompt: String
+    @State private var selectedPlatform: String
+    @State private var selectedModel: String
+    @State private var showMemory = false
+    @State private var memoryContent: String?
 
-    init(agent: Agent, viewModel: AgentsViewModel) { self.agent = agent; self.viewModel = viewModel; _name = State(initialValue: agent.name); _description = State(initialValue: agent.description) }
+    init(agent: Agent, viewModel: AgentsViewModel) {
+        self.agent = agent
+        self.viewModel = viewModel
+        _name = State(initialValue: agent.name)
+        _description = State(initialValue: agent.description)
+        _systemPrompt = State(initialValue: agent.systemPrompt ?? "")
+        _selectedPlatform = State(initialValue: agent.customModelConfig?.platform ?? "")
+        _selectedModel = State(initialValue: agent.customModelConfig?.modelType ?? "")
+    }
 
     var body: some View {
         Form {
-            Section("Details") { TextField("Name", text: $name); TextField("Description", text: $description) }
-            Section("Tools") { ForEach(agent.tools, id: \.self) { Label($0, systemImage: "wrench.fill") } }
-            if let mc = agent.customModelConfig {
-                Section("Model") { LabeledContent("Platform", value: mc.platform ?? "Default"); LabeledContent("Model", value: mc.modelType ?? "Default") }
+            Section("Details") {
+                TextField("Name", text: $name)
+                TextField("Description", text: $description)
+            }
+
+            Section("System Prompt") {
+                TextEditor(text: $systemPrompt)
+                    .font(.system(.caption, design: .monospaced))
+                    .frame(minHeight: 120)
+                    .overlay(alignment: .topLeading) {
+                        if systemPrompt.isEmpty {
+                            Text("Enter system prompt for this agent...")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                                .padding(.top, 8)
+                                .padding(.leading, 4)
+                                .allowsHitTesting(false)
+                        }
+                    }
+            }
+
+            Section("Model Configuration") {
+                Picker("Platform", selection: $selectedPlatform) {
+                    Text("Default").tag("")
+                    ForEach(ModelPlatform.allCases, id: \.rawValue) { platform in
+                        Text(platform.displayName).tag(platform.rawValue)
+                    }
+                }
+                if !selectedPlatform.isEmpty {
+                    Picker("Model", selection: $selectedModel) {
+                        Text("Default").tag("")
+                        ForEach(ModelType.allCases, id: \.rawValue) { model in
+                            Text(model.displayName).tag(model.rawValue)
+                        }
+                    }
+                }
+            }
+
+            Section("Tools") {
+                if agent.tools.isEmpty {
+                    Text("No tools assigned").foregroundColor(.secondary)
+                }
+                ForEach(agent.tools, id: \.self) { tool in
+                    Label(tool, systemImage: "wrench.fill")
+                }
+                if let mcpTools = agent.mcpTools, !mcpTools.isEmpty {
+                    ForEach(mcpTools, id: \.self) { tool in
+                        Label(tool, systemImage: "server.rack")
+                    }
+                }
+            }
+
+            Section("Memory") {
+                if let ms = agent.memorySettings {
+                    LabeledContent("Enabled", value: ms.enabled ? "Yes" : "No")
+                    if let maxTokens = ms.maxTokens {
+                        LabeledContent("Max Tokens", value: "\(maxTokens)")
+                    }
+                } else {
+                    Text("Memory not configured").foregroundColor(.secondary)
+                }
+
+                Button(action: {
+                    showMemory = true
+                    Task { await viewModel.fetchAgentMemory(agentName: agent.name) }
+                }) {
+                    Label("View Memory", systemImage: "brain")
+                }
+
+                if viewModel.agentMemory != nil {
+                    Button(role: .destructive) {
+                        Task { await viewModel.clearAgentMemory(agentName: agent.name) }
+                    } label: {
+                        Label("Clear Memory", systemImage: "trash")
+                    }
+                }
             }
         }
         .navigationTitle("Edit Agent")
-        .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Save") { Task { let u = Agent(name: name, description: description, tools: agent.tools, mcpTools: agent.mcpTools, customModelConfig: agent.customModelConfig, memorySettings: agent.memorySettings); await viewModel.saveAgent(u); dismiss() } } } }
+        .toolbar {
+            ToolbarItem(placement: .confirmationAction) {
+                Button("Save") {
+                    Task {
+                        let modelConfig: ModelConfig?
+                        if selectedPlatform.isEmpty {
+                            modelConfig = nil
+                        } else {
+                            modelConfig = ModelConfig(
+                                platform: selectedPlatform,
+                                modelType: selectedModel.isEmpty ? nil : selectedModel,
+                                apiKey: agent.customModelConfig?.apiKey,
+                                apiUrl: agent.customModelConfig?.apiUrl,
+                                extraParams: agent.customModelConfig?.extraParams
+                            )
+                        }
+                        let updated = Agent(
+                            name: name,
+                            description: description,
+                            tools: agent.tools,
+                            mcpTools: agent.mcpTools,
+                            customModelConfig: modelConfig,
+                            memorySettings: agent.memorySettings,
+                            systemPrompt: systemPrompt.isEmpty ? nil : systemPrompt
+                        )
+                        await viewModel.saveAgent(updated)
+                        dismiss()
+                    }
+                }
+            }
+        }
+        .sheet(isPresented: $showMemory) {
+            memoryView
+        }
+    }
+
+    private var memoryView: some View {
+        NavigationStack {
+            Group {
+                if let memory = viewModel.agentMemory {
+                    ScrollView {
+                        Text(memory)
+                            .font(.system(.body, design: .monospaced))
+                            .padding()
+                    }
+                } else {
+                    VStack(spacing: 12) {
+                        ProgressView()
+                        Text("Loading memory...")
+                            .foregroundColor(.secondary)
+                    }
+                }
+            }
+            .navigationTitle("Agent Memory")
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done") { showMemory = false }
+                }
+            }
+        }
     }
 }
