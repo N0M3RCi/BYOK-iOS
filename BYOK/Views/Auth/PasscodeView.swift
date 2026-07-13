@@ -93,20 +93,27 @@ struct PasscodeGateView: View {
 
     private var studentLoginView: some View {
         VStack(spacing: 20) {
-            TextField("Enter passcode", text: $passcodeInput)
-                .focused($focusedField, equals: .passcode)
-                .keyboardType(.numberPad)
-                .textContentType(.oneTimeCode)
-                .multilineTextAlignment(.center)
-                .font(.system(size: 24, design: .monospaced))
-                .foregroundColor(.black)
-                .frame(height: 52)
-                .background(RoundedRectangle(cornerRadius: 12).stroke(Color.gray.opacity(0.3), lineWidth: 1))
-                .onChange(of: passcodeInput) { newValue in
-                    let filtered = String(newValue.filter(\.isNumber).prefix(6))
-                    if filtered != newValue { passcodeInput = filtered }
-                    if filtered.count == 6 { submitPasscode(filtered) }
+            ZStack(alignment: .center) {
+                if passcodeInput.isEmpty {
+                    Text("Enter passcode")
+                        .foregroundColor(.gray)
                 }
+                TextField("", text: $passcodeInput)
+                    .focused($focusedField, equals: .passcode)
+                    .keyboardType(.numberPad)
+                    .textContentType(.oneTimeCode)
+                    .multilineTextAlignment(.center)
+                    .font(.system(size: 24, design: .monospaced))
+                    .foregroundColor(.black)
+                    .onChange(of: passcodeInput) { newValue in
+                        let filtered = String(newValue.filter(\.isNumber).prefix(6))
+                        if filtered != newValue { passcodeInput = filtered }
+                        if filtered.count == 6 { submitPasscode(filtered) }
+                    }
+            }
+            .frame(height: 52)
+            .frame(maxWidth: .infinity)
+            .background(RoundedRectangle(cornerRadius: 12).stroke(Color.gray.opacity(0.3), lineWidth: 1))
 
             Button(action: {
                 guard passcodeInput.count == 6 else { return }
@@ -147,12 +154,17 @@ struct PasscodeGateView: View {
                         .background(Color(hex: "#EAB308")).cornerRadius(24)
                 }
             } else {
-                TextField("Your Name", text: $registerName)
-                    .textFieldStyle(.plain).padding()
-                    .background(RoundedRectangle(cornerRadius: 12).stroke(Color.gray.opacity(0.3), lineWidth: 1))
-                    .foregroundColor(.black)
-                    .focused($focusedField, equals: .register)
-                    .autocapitalization(.words)
+                ZStack(alignment: .leading) {
+                    if registerName.isEmpty {
+                        Text("Your Name").foregroundColor(.gray).padding(.leading, 16)
+                    }
+                    TextField("", text: $registerName)
+                        .textFieldStyle(.plain).padding()
+                        .foregroundColor(.black)
+                        .focused($focusedField, equals: .register)
+                        .autocapitalization(.words)
+                }
+                .background(RoundedRectangle(cornerRadius: 12).stroke(Color.gray.opacity(0.3), lineWidth: 1))
 
                 Button(action: {
                     guard !registerName.trimmingCharacters(in: .whitespaces).isEmpty else { return }
@@ -176,17 +188,23 @@ struct PasscodeGateView: View {
 
     private var adminLoginView: some View {
         VStack(spacing: 20) {
-            TextField("Email", text: $adminEmail)
-                .textFieldStyle(.plain).padding()
-                .background(RoundedRectangle(cornerRadius: 12).stroke(Color.gray.opacity(0.3), lineWidth: 1))
-                .foregroundColor(.black).keyboardType(.emailAddress).autocapitalization(.none)
-                .focused($focusedField, equals: .adminEmail)
+            ZStack(alignment: .leading) {
+                if adminEmail.isEmpty { Text("Email").foregroundColor(.gray).padding(.leading, 16) }
+                TextField("", text: $adminEmail)
+                    .textFieldStyle(.plain).padding()
+                    .foregroundColor(.black).keyboardType(.emailAddress).autocapitalization(.none)
+                    .focused($focusedField, equals: .adminEmail)
+            }
+            .background(RoundedRectangle(cornerRadius: 12).stroke(Color.gray.opacity(0.3), lineWidth: 1))
 
-            SecureField("Password", text: $adminPassword)
-                .textFieldStyle(.plain).padding()
-                .background(RoundedRectangle(cornerRadius: 12).stroke(Color.gray.opacity(0.3), lineWidth: 1))
-                .foregroundColor(.black)
-                .focused($focusedField, equals: .adminPassword)
+            ZStack(alignment: .leading) {
+                if adminPassword.isEmpty { Text("Password").foregroundColor(.gray).padding(.leading, 16) }
+                SecureField("", text: $adminPassword)
+                    .textFieldStyle(.plain).padding()
+                    .foregroundColor(.black)
+                    .focused($focusedField, equals: .adminPassword)
+            }
+            .background(RoundedRectangle(cornerRadius: 12).stroke(Color.gray.opacity(0.3), lineWidth: 1))
 
             Button(action: {
                 guard !adminEmail.isEmpty, !adminPassword.isEmpty else { return }
