@@ -12,7 +12,7 @@
     <key>CFBundleIdentifier</key>
     <string>cc.n0m3rci.byok</string>
     <key>CFBundleExecutable</key>
-    <string>M3RCI - UniMind</string>
+    <string>$(EXECUTABLE_NAME)</string>
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>CFBundleVersion</key>
