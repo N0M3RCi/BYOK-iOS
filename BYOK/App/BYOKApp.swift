@@ -1,6 +1,7 @@
 import SwiftUI
 
 @main
+@MainActor
 struct BYOKApp: App {
     @StateObject private var authViewModel = AuthViewModel()
     @StateObject private var themeManager = ThemeManager()

@@ -1,5 +1,6 @@
 import SwiftUI
 
+@MainActor
 struct SignUpView: View {
     @EnvironmentObject var authViewModel: AuthViewModel
     @State private var email = ""
