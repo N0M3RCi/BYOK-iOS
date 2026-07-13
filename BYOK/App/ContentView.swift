@@ -49,23 +49,47 @@ struct SplashView: View {
 
 struct MainTabView: View {
     @EnvironmentObject var authViewModel: AuthViewModel
+    @Environment(\.horizontalSizeClass) var horizontalSizeClass
 
     var body: some View {
+        if horizontalSizeClass == .regular {
+            iPadLayout
+        } else {
+            iPhoneLayout
+        }
+    }
+
+    // MARK: - iPhone Layout (TabView)
+    private var iPhoneLayout: some View {
         TabView {
             DashboardView()
-                .tabItem {
-                    Label("Home", systemImage: "house")
-                }
+                .tabItem { Label("Home", systemImage: "house") }
 
             ChatView()
-                .tabItem {
-                    Label("Chat", systemImage: "message")
-                }
+                .tabItem { Label("Chat", systemImage: "message") }
 
             SettingsView()
-                .tabItem {
+                .tabItem { Label("Settings", systemImage: "gearshape") }
+        }
+    }
+
+    // MARK: - iPad Layout (NavigationSplitView)
+    private var iPadLayout: some View {
+        NavigationSplitView {
+            List {
+                NavigationLink(destination: DashboardView()) {
+                    Label("Home", systemImage: "house")
+                }
+                NavigationLink(destination: ChatView()) {
+                    Label("Chat", systemImage: "message")
+                }
+                NavigationLink(destination: SettingsView()) {
                     Label("Settings", systemImage: "gearshape")
                 }
+            }
+            .navigationTitle("M3RCI")
+        } detail: {
+            DashboardView()
         }
     }
 }

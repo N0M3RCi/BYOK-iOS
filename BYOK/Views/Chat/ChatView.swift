@@ -174,6 +174,7 @@ struct ChatView: View {
                                 Image(systemName: "stop.fill")
                                     .foregroundColor(.red)
                             }
+                            .keyboardShortcut(.escape, modifiers: [])
                         } else {
                             Button(action: sendMessage) {
                                 Image(systemName: "arrow.up.circle.fill")
@@ -181,6 +182,7 @@ struct ChatView: View {
                                     .foregroundColor(viewModel.currentInput.isEmpty ? .gray : .accentTeal)
                             }
                             .disabled(viewModel.currentInput.isEmpty || viewModel.isLoading)
+                            .keyboardShortcut(.return, modifiers: .command)
                         }
                     }
                     .padding()
