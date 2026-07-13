@@ -71,3 +71,32 @@ struct FilePreviewView: View {
         }
     }
 }
+
+// MARK: - String Extension for File Icons
+extension String {
+    func fileIcon() -> String {
+        let ext = (self as NSString).pathExtension.lowercased()
+        switch ext {
+        case "swift", "py", "js", "ts", "tsx", "jsx", "go", "rs", "rb", "java", "kt", "c", "cpp", "h", "cs":
+            return "doc.code"
+        case "json", "yaml", "yml", "xml", "toml", "plist":
+            return "doc.text"
+        case "md", "txt", "rtf":
+            return "doc.plaintext"
+        case "png", "jpg", "jpeg", "gif", "svg", "webp", "ico":
+            return "photo"
+        case "pdf":
+            return "doc.viewfinder"
+        case "zip", "tar", "gz", "bz2", "7z":
+            return "doc.zipper"
+        case "mp3", "wav", "aac", "flac", "ogg":
+            return "music.note"
+        case "mp4", "mov", "avi", "mkv":
+            return "film"
+        case "html", "css", "scss", "less":
+            return "globe"
+        default:
+            return "doc.fill"
+        }
+    }
+}
