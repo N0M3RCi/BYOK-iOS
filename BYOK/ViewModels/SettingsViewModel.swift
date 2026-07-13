@@ -66,30 +66,25 @@ final class SettingsViewModel: ObservableObject {
     func checkConnection() {
         isLoading = true
         Task {
-            do {
-                let brain = APIConfig.shared.brainServiceURL
-                let api = APIConfig.shared.apiBaseURL
-                // Check both endpoints — brain service root + API
-                var brainOK = false
-                var apiOK = false
-                if let brainURL = URL(string: brain) {
-                    var req = URLRequest(url: brainURL)
-                    req.httpMethod = "GET"
-                    req.timeoutInterval = 10
-                    if let (_, r) = try? await URLSession.shared.data(for: req),
-                       r is HTTPURLResponse { brainOK = true }
-                }
-                if let apiURL = URL(string: "\(api)/auth/passcode-login") {
-                    var req = URLRequest(url: apiURL)
-                    req.httpMethod = "GET"
-                    req.timeoutInterval = 10
-                    if let (_, r) = try? await URLSession.shared.data(for: req),
-                       r is HTTPURLResponse { apiOK = true }
-                }
-                isConnected = brainOK || apiOK
-            } catch {
-                isConnected = false
+            let brain = APIConfig.shared.brainServiceURL
+            let api = APIConfig.shared.apiBaseURL
+            var brainOK = false
+            var apiOK = false
+            if let brainURL = URL(string: brain) {
+                var req = URLRequest(url: brainURL)
+                req.httpMethod = "GET"
+                req.timeoutInterval = 10
+                if let (_, r) = try? await URLSession.shared.data(for: req),
+                   r is HTTPURLResponse { brainOK = true }
             }
+            if let apiURL = URL(string: "\(api)/auth/passcode-login") {
+                var req = URLRequest(url: apiURL)
+                req.httpMethod = "GET"
+                req.timeoutInterval = 10
+                if let (_, r) = try? await URLSession.shared.data(for: req),
+                   r is HTTPURLResponse { apiOK = true }
+            }
+            isConnected = brainOK || apiOK
             isLoading = false
         }
     }
