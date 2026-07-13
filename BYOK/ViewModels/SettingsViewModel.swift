@@ -162,7 +162,7 @@ if let modelType = modelType {
             if let url = apiUrl, !url.isEmpty { body["api_url"] = url }
 
             let result = try await apiClient.rawRequest(
-                method: "POST",
+                method: "PUT",
                 path: "/provider/test",
                 body: body,
                 requiresAuth: true
@@ -189,8 +189,8 @@ if let modelType = modelType {
             if let url = apiUrl, !url.isEmpty { body["api_url"] = url }
 
             let result = try await apiClient.rawRequest(
-                method: "POST",
-                path: "/model/list",
+                method: "PUT",
+                path: "/provider/models",
                 body: body,
                 requiresAuth: true
             )
