@@ -246,6 +246,49 @@ final class APIClient: @unchecked Sendable {
         return try decoder.decode(FileUploadResponse.self, from: responseData)
     }
 
+    // MARK: - Knowledge Base API
+
+    func getKnowledgeBases() async throws -> [KnowledgeBase] {
+        try await brainGet(path: "/knowledge-base")
+    }
+
+    func createKnowledgeBase(name: String, description: String?) async throws -> KnowledgeBase {
+        let body = CreateKnowledgeBaseRequest(name: name, description: description)
+        return try await brainPost(path: "/knowledge-base", body: body)
+    }
+
+    func deleteKnowledgeBase(id: String) async throws -> EmptyResponse {
+        try await brainDelete(path: "/knowledge-base/\(id)")
+    }
+
+    func getKnowledgeBaseDocuments(knowledgeBaseId: String) async throws -> [KnowledgeDocument] {
+        try await brainGet(path: "/knowledge-base/\(knowledgeBaseId)/documents")
+    }
+
+    func uploadKnowledgeDocument(knowledgeBaseId: String, data: Data, filename: String) async throws -> KnowledgeDocument {
+        let url = try buildURL(base: APIConfig.shared.brainServiceURL, path: "/knowledge-base/\(knowledgeBaseId)/documents/upload")
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        let headers = await authHeaders()
+        headers.forEach { request.setValue($1, forHTTPHeaderField: $0) }
+        let boundary = UUID().uuidString
+        request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
+        var body = Data()
+        body.append("--\(boundary)\r\n".data(using: .utf8)!)
+        body.append("Content-Disposition: form-data; name=\"file\"; filename=\"\(filename)\"\r\n".data(using: .utf8)!)
+        body.append("Content-Type: application/octet-stream\r\n\r\n".data(using: .utf8)!)
+        body.append(data)
+        body.append("\r\n--\(boundary)--\r\n".data(using: .utf8)!)
+        request.httpBody = body
+        let (responseData, response) = try await session.data(for: request)
+        try validateResponse(response)
+        return try decoder.decode(KnowledgeDocument.self, from: responseData)
+    }
+
+    func deleteKnowledgeDocument(knowledgeBaseId: String, documentId: String) async throws -> EmptyResponse {
+        try await brainDelete(path: "/knowledge-base/\(knowledgeBaseId)/documents/\(documentId)")
+    }
+
     // MARK: - Helpers
 
     private func buildURL(base: String, path: String) throws -> URL {

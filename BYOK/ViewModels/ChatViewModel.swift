@@ -15,6 +15,7 @@ final class ChatViewModel: ObservableObject {
     @Published var currentTaskID: String?
     @Published var showReasoning = false
     @Published var attachedFiles: [String] = []
+    @Published var attachedKnowledgeBaseIds: [String] = []
 
     private let apiClient = APIClient.shared
     private let keychain = KeychainManager.shared
@@ -101,7 +102,8 @@ final class ChatViewModel: ObservableObject {
             sessionMode: "workforce",
             userId: userID,
             serverUrl: "\(APIConfig.shared.brainBaseURL)/v1",
-            attaches: []
+            attaches: [],
+            knowledgeBaseIds: attachedKnowledgeBaseIds.isEmpty ? nil : attachedKnowledgeBaseIds
         )
 
         let streamer = SSEStreamer()

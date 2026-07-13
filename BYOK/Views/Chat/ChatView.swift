@@ -2,10 +2,21 @@ import SwiftUI
 
 struct ChatView: View {
     @StateObject private var viewModel = ChatViewModel()
+    let projectID: String?
     @State private var showFilePicker = false
     @State private var showFeedback = false
     @State private var feedbackMessageId: String?
     @State private var feedbackRating = 0
+    @State private var showKnowledgeBasePicker = false
+
+    init(projectID: String? = nil) {
+        self.projectID = projectID
+        let vm = ChatViewModel()
+        if let id = projectID {
+            vm.currentProjectID = id
+        }
+        _viewModel = StateObject(wrappedValue: vm)
+    }
 
     var body: some View {
         NavigationStack {
@@ -119,10 +130,16 @@ struct ChatView: View {
                     Menu {
                         Button("Clear Chat") { viewModel.clearChat() }
                         Button("Upload File") { showFilePicker = true }
+                        Button(action: { showKnowledgeBasePicker = true }) {
+                            Label("Attach Knowledge", systemImage: "books.vertical")
+                        }
                     } label: {
                         Image(systemName: "ellipsis.circle")
                     }
                 }
+            }
+            .sheet(isPresented: $showKnowledgeBasePicker) {
+                KnowledgeBaseAttachmentView(selectedIds: $viewModel.attachedKnowledgeBaseIds)
             }
             .sheet(isPresented: $showFilePicker) {
                 DocumentPickerView { data, filename in

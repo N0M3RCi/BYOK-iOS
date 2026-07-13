@@ -155,6 +155,7 @@ struct ChatRequest: Codable {
     let userId: String
     let serverUrl: String
     let attaches: [String]
+    let knowledgeBaseIds: [String]?
 
     enum CodingKeys: String, CodingKey {
         case taskId = "task_id"
@@ -169,6 +170,7 @@ struct ChatRequest: Codable {
         case userId = "user_id"
         case serverUrl = "server_url"
         case attaches
+        case knowledgeBaseIds = "knowledge_base_ids"
     }
 }
 
@@ -739,4 +741,44 @@ struct MessageFeedback: Identifiable, Codable {
         self.comment = comment
         self.createdAt = createdAt
     }
+}
+
+// MARK: - Knowledge Base
+struct KnowledgeBase: Codable, Identifiable, Equatable {
+    let id: String
+    let name: String
+    let description: String?
+    let documentCount: Int
+    let createdAt: String
+
+    enum CodingKeys: String, CodingKey {
+        case id, name, description
+        case documentCount = "document_count"
+        case createdAt = "created_at"
+    }
+}
+
+struct CreateKnowledgeBaseRequest: Codable {
+    let name: String
+    let description: String?
+}
+
+struct KnowledgeDocument: Codable, Identifiable, Equatable {
+    let id: String
+    let filename: String
+    let status: DocumentStatus
+    let size: Int?
+    let createdAt: String
+
+    enum CodingKeys: String, CodingKey {
+        case id, filename, status, size
+        case createdAt = "created_at"
+    }
+}
+
+enum DocumentStatus: String, Codable, Equatable {
+    case indexed
+    case indexing
+    case failed
+    case pending
 }
