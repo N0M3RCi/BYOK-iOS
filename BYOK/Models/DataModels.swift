@@ -745,6 +745,25 @@ struct MessageFeedback: Identifiable, Codable {
     }
 }
 
+// MARK: - Session
+struct SessionInfo: Codable, Identifiable, Equatable {
+    let id: String
+    let deviceName: String?
+    let platform: String?
+    let lastActive: String?
+    let createdAt: String?
+    let isCurrent: Bool?
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case deviceName = "device_name"
+        case platform
+        case lastActive = "last_active"
+        case createdAt = "created_at"
+        case isCurrent = "is_current"
+    }
+}
+
 // MARK: - Usage Tracking
 struct ProviderUsage: Codable, Identifiable, Equatable {
     let id: String

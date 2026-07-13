@@ -382,7 +382,10 @@ struct PrivacySettingsView: View {
     @State private var biometricEnabled = UserDefaults.standard.bool(forKey: "biometric_enabled")
     var body: some View {
         Form {
-            Section("Security") { Toggle("Use Biometrics", isOn: $biometricEnabled).onChange(of: biometricEnabled) { UserDefaults.standard.set($0, forKey: "biometric_enabled") } }
+            Section("Security") {
+                Toggle("Use Biometrics", isOn: $biometricEnabled).onChange(of: biometricEnabled) { UserDefaults.standard.set($0, forKey: "biometric_enabled") }
+                NavigationLink(destination: SessionManagementView()) { Label("Active Sessions", systemImage: "ipad.and.iphone") }
+            }
             Section("Data") { Button("Export Data") {}.foregroundColor(.primary) }
             Section { Link("Privacy Policy", destination: URL(string: "https://n0m3rci.cc/privacy")!); Link("Terms of Service", destination: URL(string: "https://n0m3rci.cc/terms")!) }
         }.navigationTitle("Privacy")

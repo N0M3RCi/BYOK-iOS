@@ -11,6 +11,7 @@ struct BYOKApp: App {
                 .environmentObject(authViewModel)
                 .environmentObject(themeManager)
                 .preferredColorScheme(themeManager.colorScheme)
+                .biometricLock()
                 .onAppear {
                     authViewModel.checkAutoLogin()
                 }
