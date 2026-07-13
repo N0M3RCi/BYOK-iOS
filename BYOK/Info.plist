@@ -12,15 +12,13 @@
     <key>CFBundleIdentifier</key>
     <string>cc.n0m3rci.byok</string>
     <key>CFBundleExecutable</key>
-    <string>$(EXECUTABLE_NAME)</string>
+    <string>M3RCI - UniMind</string>
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>CFBundleVersion</key>
     <string>1</string>
     <key>CFBundleShortVersionString</key>
     <string>1.0</string>
-    <key>CFBundleExecutable</key>
-    <string>$(EXECUTABLE_NAME)</string>
     <key>UIRequiredDeviceCapabilities</key>
     <array>
         <string>arm64</string>
