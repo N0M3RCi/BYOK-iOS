@@ -24,7 +24,7 @@ struct HistoryListView: View {
             }
             .navigationTitle("History")
             .searchable(text: $searchText, prompt: "Search history...")
-            .onChange(of: searchText) { viewModel.searchText = searchText }
+            .onChange(of: searchText) { newValue in viewModel.searchText = newValue }
             .sheet(item: $selectedItem) { item in HistoryDetailView(item: item) }
             .alert("Delete", isPresented: $showDeleteAlert) { Button("Cancel", role: .cancel) {}; Button("Delete", role: .destructive) { if let item = deleteTarget { viewModel.deleteItem(item.id) } } } message: { Text("Delete this conversation?") }
             .onAppear { viewModel.loadHistory() }
@@ -39,14 +39,16 @@ struct HistoryDetailView: View {
 
     var body: some View {
         NavigationStack {
-            if messages.isEmpty {
-                VStack { ProgressView(); Text("Loading...").foregroundColor(.secondary) }
-            } else {
-                List(messages) { msg in
-                    VStack(alignment: .leading) {
-                        Text(msg.role == .user ? "You" : "Assistant").font(.caption).fontWeight(.semibold).foregroundColor(.accentTeal)
-                        Text(msg.content).font(.body)
-                    }.padding(.vertical, 4)
+            Group {
+                if messages.isEmpty {
+                    VStack { ProgressView(); Text("Loading...").foregroundColor(.secondary) }
+                } else {
+                    List(messages) { msg in
+                        VStack(alignment: .leading) {
+                            Text(msg.role == .user ? "You" : "Assistant").font(.caption).fontWeight(.semibold).foregroundColor(.accentTeal)
+                            Text(msg.content).font(.body)
+                        }.padding(.vertical, 4)
+                    }
                 }
             }
             .navigationTitle(item.title ?? "Conversation")
@@ -54,7 +56,7 @@ struct HistoryDetailView: View {
             .onAppear {
                 Task {
                     do {
-                        let _: [String: AnyCodable] = try await APIClient.shared.apiRequest(method: "GET", path: "/chat/history/\(item.id)")
+                        let _: EmptyResponse = try await APIClient.shared.apiRequest(method: "GET", path: "/chat/history/\(item.id)")
                     } catch {}
                 }
             }

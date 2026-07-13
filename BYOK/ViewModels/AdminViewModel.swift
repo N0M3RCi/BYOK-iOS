@@ -25,7 +25,7 @@ final class AdminViewModel: ObservableObject {
             let _: AdminUser = try await apiClient.apiRequest(
                 method: "PUT", path: "/admin/users/\(id)", body: body
             )
-            await loadUsers()
+            loadUsers()
         } catch { errorMessage = error.localizedDescription }
     }
 
@@ -34,7 +34,7 @@ final class AdminViewModel: ObservableObject {
             let _: EmptyResponse = try await apiClient.apiRequest(
                 method: "DELETE", path: "/admin/users/\(id)"
             )
-            await loadUsers()
+            loadUsers()
         } catch { errorMessage = error.localizedDescription }
     }
 }

@@ -22,14 +22,14 @@ final class ToolsViewModel: ObservableObject {
     func installTool(name: String) async {
         do {
             let _: Tool = try await apiClient.brainPost(path: "/tools/\(name)/install")
-            await loadTools()
+            loadTools()
         } catch { errorMessage = error.localizedDescription }
     }
 
     func removeTool(name: String) async {
         do {
             let _: EmptyResponse = try await apiClient.brainDelete(path: "/tools/\(name)")
-            await loadTools()
+            loadTools()
         } catch { errorMessage = error.localizedDescription }
     }
 
