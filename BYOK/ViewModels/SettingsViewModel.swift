@@ -101,7 +101,7 @@ final class SettingsViewModel: ObservableObject {
                 path: "/provider",
                 body: body
             )
-            await loadProviders()
+            loadProviders()
         } catch {
             errorMessage = error.localizedDescription
         }
