@@ -18,7 +18,7 @@ final class SettingsViewModel: ObservableObject {
     private let apiClient = APIClient.shared
 
     init() {
-        brainEndpoint = UserDefaults.standard.string(forKey: "brain_endpoint") ?? "https://class.n0m3rci.cc"
+        brainEndpoint = UserDefaults.standard.string(forKey: "brain_endpoint") ?? "https://class.n0m3rci.cc/enter"
         fontSize = UserDefaults.standard.double(forKey: "font_size").nonZero ?? 16.0
     }
 

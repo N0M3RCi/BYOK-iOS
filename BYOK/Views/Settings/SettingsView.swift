@@ -105,7 +105,7 @@ struct ModelValidationView: View {
 struct APISettingsView: View {
     @ObservedObject var viewModel: SettingsViewModel
     @State private var endpointURL: String
-    init(viewModel: SettingsViewModel) { self.viewModel = viewModel; _endpointURL = State(initialValue: UserDefaults.standard.string(forKey: "brain_endpoint") ?? "https://class.n0m3rci.cc") }
+    init(viewModel: SettingsViewModel) { self.viewModel = viewModel; _endpointURL = State(initialValue: UserDefaults.standard.string(forKey: "brain_endpoint") ?? "https://class.n0m3rci.cc/enter") }
 
     var body: some View {
         Form {

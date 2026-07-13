@@ -34,7 +34,11 @@ struct APIConfig {
     }
 
     var apiBaseURL: String {
-        "\(brainBaseURL)/api/v1"
+        let base = brainBaseURL
+        if base.hasSuffix("/enter") {
+            return "\(base.dropLast(6))/api/v1"
+        }
+        return "\(base)/api/v1"
     }
 
     var brainServiceURL: String {
