@@ -70,7 +70,7 @@ struct SignUpView: View {
                     }
 
                     Button(action: {
-                        Task { await authViewModel.signUp(email: email, password: password, confirmPassword: confirmPassword) }
+                        let authVM = _authViewModel.wrappedValue; Task { await authVM.signUp(email: email, password: password, confirmPassword: confirmPassword) }
                     }) {
                         HStack {
                             if authViewModel.isLoading { ProgressView().progressViewStyle(CircularProgressViewStyle(tint: .white)) }
