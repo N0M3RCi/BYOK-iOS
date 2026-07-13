@@ -1,0 +1,110 @@
+import SwiftUI
+
+struct ChannelsView: View {
+    @StateObject private var viewModel = ChannelsViewModel()
+    @State private var showCreateChannel = false
+    @State private var newChannelName = ""
+    @State private var newChannelType = "telegram"
+
+    var body: some View {
+        NavigationStack {
+            List {
+                if viewModel.isLoading && viewModel.channels.isEmpty {
+                    HStack {
+                        Spacer()
+                        ProgressView()
+                        Spacer()
+                    }
+                } else if viewModel.channels.isEmpty {
+                    emptyStateView(icon: "antenna.radiowaves.left.and.right", title: "No Channels", message: "Create a channel to connect external platforms")
+                } else {
+                    ForEach(viewModel.channels) { channel in
+                        HStack {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(channel.name)
+                                    .font(.headline)
+                                Text(channel.type ?? "")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                            Spacer()
+                            Toggle("", isOn: Binding(
+                                get: { channel.enabled },
+                                set: { _ in
+                                    Task { await viewModel.toggleChannel(channel) }
+                                }
+                            ))
+                        }
+                        .swipeActions(edge: .trailing) {
+                            Button(role: .destructive) {
+                                Task { await viewModel.deleteChannel(id: channel.id) }
+                            } label: {
+                                Label("Delete", systemImage: "trash")
+                            }
+                        }
+                    }
+                }
+            }
+            .navigationTitle("Channels")
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button(action: { showCreateChannel = true }) {
+                        Image(systemName: "plus")
+                    }
+                }
+            }
+            .sheet(isPresented: $showCreateChannel) {
+                NavigationStack {
+                    Form {
+                        Section("Channel Details") {
+                            TextField("Name", text: $newChannelName)
+                            Picker("Type", selection: $newChannelType) {
+                                Text("Telegram").tag("telegram")
+                                Text("Slack").tag("slack")
+                                Text("Webhook").tag("webhook")
+                            }
+                        }
+                    }
+                    .navigationTitle("New Channel")
+                    .toolbar {
+                        ToolbarItem(placement: .cancellationAction) {
+                            Button("Cancel") { showCreateChannel = false }
+                        }
+                        ToolbarItem(placement: .confirmationAction) {
+                            Button("Create") {
+                                Task {
+                                    await viewModel.createChannel(name: newChannelName, type: newChannelType)
+                                }
+                                showCreateChannel = false
+                                newChannelName = ""
+                            }
+                            .disabled(newChannelName.isEmpty)
+                        }
+                    }
+                }
+            }
+            .onAppear {
+                viewModel.loadChannels()
+            }
+        }
+    }
+
+    private func emptyStateView(icon: String, title: String, message: String) -> some View {
+        VStack(spacing: 8) {
+            Image(systemName: icon)
+                .font(.largeTitle)
+                .foregroundColor(.secondary)
+            Text(title)
+                .font(.headline)
+            Text(message)
+                .font(.subheadline)
+                .foregroundColor(.secondary)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 40)
+    }
+}
+
+#Preview {
+    ChannelsView()
+}
