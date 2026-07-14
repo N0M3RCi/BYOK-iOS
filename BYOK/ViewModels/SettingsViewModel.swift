@@ -221,9 +221,16 @@ final class SettingsViewModel: ObservableObject {
                     ?? (json["error"] as? [String: Any])?["message"] as? String
                     ?? json["message"] as? String
                     ?? "HTTP \(statusCode)"
-                testResult = msg
+                if statusCode == 404 {
+                    testResult = "URL not found (404). Try appending /models or /v1/models to your URL"
+                } else {
+                    testResult = msg
+                }
             } else {
                 testResult = "HTTP \(statusCode): \(bodyStr.prefix(100))"
+                if statusCode == 404 {
+                    testResult = "URL not found (404). Try appending /models or /v1/models to your URL"
+                }
             }
             return false
         } catch {
@@ -282,9 +289,17 @@ final class SettingsViewModel: ObservableObject {
                         ?? (json["error"] as? [String: Any])?["message"] as? String
                         ?? json["message"] as? String
                         ?? "HTTP \(statusCode)"
-                    errorMessage = msg
+                    if statusCode == 404 {
+                        errorMessage = "URL not found (404). Try appending /models or /v1/models to your URL"
+                    } else {
+                        errorMessage = msg
+                    }
                 } else {
-                    errorMessage = "HTTP \(statusCode): \(bodyStr.prefix(100))"
+                    if statusCode == 404 {
+                        errorMessage = "URL not found (404). Try appending /models or /v1/models to your URL"
+                    } else {
+                        errorMessage = "HTTP \(statusCode): \(bodyStr.prefix(100))"
+                    }
                 }
                 return
             }
