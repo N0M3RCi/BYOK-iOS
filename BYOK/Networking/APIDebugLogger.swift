@@ -2,7 +2,7 @@ import Foundation
 import Combine
 
 /// Captures API request/response details for debugging
-final class APIDebugLogger: ObservableObject {
+final class APIDebugLogger: ObservableObject, @unchecked Sendable {
     static let shared = APIDebugLogger()
 
     struct LogEntry: Identifiable {
