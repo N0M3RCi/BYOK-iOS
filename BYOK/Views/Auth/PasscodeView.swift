@@ -18,78 +18,75 @@ struct PasscodeGateView: View {
     @State private var adminPassword = ""
     @State private var registeredPasscode: String?
     @State private var localError: String?
+    @FocusState private var focusedField: String?
 
     var body: some View {
-        ZStack {
-            Color.white.ignoresSafeArea()
+        VStack(spacing: 0) {
+            Spacer()
 
-            VStack(spacing: 0) {
-                Spacer()
-
-                // Branding
-                VStack(spacing: 6) {
-                    Text("M3RCI")
-                        .font(.system(size: 36, weight: .bold))
-                        .foregroundColor(Color(red: 0.25, green: 0.25, blue: 0.35))
-                    Text("UniMind")
-                        .font(.system(size: 20, weight: .regular))
-                        .foregroundColor(Color(red: 0.55, green: 0.55, blue: 0.65))
-                    Text("AI Multi-Agent Workforce")
-                        .font(.system(size: 14))
-                        .foregroundColor(Color(red: 0.7, green: 0.7, blue: 0.8))
-                        .padding(.top, 2)
-                }
-                .padding(.bottom, 32)
-
-                // Tab selector
-                HStack(spacing: 0) {
-                    ForEach(PasscodeTab.allCases, id: \.self) { tab in
-                        Button(action: { selectedTab = tab; localError = nil; registeredPasscode = nil }) {
-                            Text(tab.rawValue)
-                                .font(.subheadline.weight(selectedTab == tab ? .semibold : .regular))
-                                .foregroundColor(selectedTab == tab ? Color(red: 0.29, green: 0.0, blue: 0.51) : Color(red: 0.6, green: 0.6, blue: 0.7))
-                                .padding(.vertical, 12)
-                                .frame(maxWidth: .infinity)
-                                .overlay(alignment: .bottom) {
-                                    if selectedTab == tab {
-                                        Rectangle()
-                                            .fill(Color(red: 0.29, green: 0.0, blue: 0.51))
-                                            .frame(height: 2.5)
-                                    }
-                                }
-                        }
-                    }
-                }
-                .padding(.horizontal, 32)
-
-                // Content
-                VStack(spacing: 24) {
-                    switch selectedTab {
-                    case .student:
-                        studentLoginView
-                    case .register:
-                        registerView
-                    case .admin:
-                        adminLoginView
-                    }
-
-                    if let err = localError ?? authViewModel.errorMessage {
-                        Text(err)
-                            .font(.caption)
-                            .foregroundColor(.red)
-                            .multilineTextAlignment(.center)
-                    }
-
-                    if authViewModel.isLoading {
-                        ProgressView()
-                            .tint(Color(red: 0.29, green: 0.0, blue: 0.51))
-                    }
-                }
-                .padding(.horizontal, 32)
-                .padding(.vertical, 28)
-
-                Spacer()
+            // Branding
+            VStack(spacing: 6) {
+                Text("M3RCI")
+                    .font(.system(size: 36, weight: .bold))
+                    .foregroundColor(Color(red: 0.25, green: 0.25, blue: 0.35))
+                Text("UniMind")
+                    .font(.system(size: 20, weight: .regular))
+                    .foregroundColor(Color(red: 0.55, green: 0.55, blue: 0.65))
+                Text("AI Multi-Agent Workforce")
+                    .font(.system(size: 14))
+                    .foregroundColor(Color(red: 0.7, green: 0.7, blue: 0.8))
+                    .padding(.top, 2)
             }
+            .padding(.bottom, 32)
+
+            // Tab selector
+            HStack(spacing: 0) {
+                ForEach(PasscodeTab.allCases, id: \.self) { tab in
+                    Button(action: { selectedTab = tab; localError = nil; registeredPasscode = nil }) {
+                        Text(tab.rawValue)
+                            .font(.subheadline.weight(selectedTab == tab ? .semibold : .regular))
+                            .foregroundColor(selectedTab == tab ? Color(red: 0.29, green: 0.0, blue: 0.51) : Color(red: 0.6, green: 0.6, blue: 0.7))
+                            .padding(.vertical, 12)
+                            .frame(maxWidth: .infinity)
+                            .overlay(alignment: .bottom) {
+                                if selectedTab == tab {
+                                    Rectangle()
+                                        .fill(Color(red: 0.29, green: 0.0, blue: 0.51))
+                                        .frame(height: 2.5)
+                                }
+                            }
+                    }
+                }
+            }
+            .padding(.horizontal, 32)
+
+            // Content
+            VStack(spacing: 24) {
+                switch selectedTab {
+                case .student:
+                    studentLoginView
+                case .register:
+                    registerView
+                case .admin:
+                    adminLoginView
+                }
+
+                if let err = localError ?? authViewModel.errorMessage {
+                    Text(err)
+                        .font(.caption)
+                        .foregroundColor(.red)
+                        .multilineTextAlignment(.center)
+                }
+
+                if authViewModel.isLoading {
+                    ProgressView()
+                        .tint(Color(red: 0.29, green: 0.0, blue: 0.51))
+                }
+            }
+            .padding(.horizontal, 32)
+            .padding(.vertical, 28)
+
+            Spacer()
         }
     }
 
@@ -116,6 +113,7 @@ struct PasscodeGateView: View {
                 .keyboardType(.numberPad)
                 .multilineTextAlignment(.center)
                 .font(.system(size: 24, design: .monospaced))
+                .focused($focusedField, equals: "passcode")
                 .onChange(of: passcode) { newValue in
                     let filtered = newValue.filter(\.isNumber)
                     if filtered.count > 6 { passcode = String(filtered.prefix(6)) }
@@ -196,6 +194,7 @@ struct PasscodeGateView: View {
                     )
                     .foregroundColor(Color(red: 0.2, green: 0.2, blue: 0.3))
                     .autocapitalization(.words)
+                    .focused($focusedField, equals: "registerName")
 
                 Button("Register") {
                     guard !registerName.trimmingCharacters(in: .whitespaces).isEmpty else { return }
@@ -235,6 +234,7 @@ struct PasscodeGateView: View {
                     .foregroundColor(Color(red: 0.2, green: 0.2, blue: 0.3))
                     .keyboardType(.emailAddress)
                     .autocapitalization(.none)
+                    .focused($focusedField, equals: "adminEmail")
 
                 SecureField("Password", text: $adminPassword)
                     .textFieldStyle(.plain)
@@ -248,6 +248,7 @@ struct PasscodeGateView: View {
                             )
                     )
                     .foregroundColor(Color(red: 0.2, green: 0.2, blue: 0.3))
+                    .focused($focusedField, equals: "adminPassword")
             }
 
             Button("Sign In") {

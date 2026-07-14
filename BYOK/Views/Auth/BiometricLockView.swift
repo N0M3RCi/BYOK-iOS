@@ -1,9 +1,13 @@
 import SwiftUI
 
 struct BiometricLockView: View {
-    @State private var isUnlocked = false
     @State private var showError = false
     @State private var errorMessage = ""
+    let onUnlock: (() -> Void)?
+
+    init(onUnlock: (() -> Void)? = nil) {
+        self.onUnlock = onUnlock
+    }
 
     var body: some View {
         VStack(spacing: 24) {
@@ -58,14 +62,14 @@ struct BiometricLockView: View {
 
     private func authenticate() {
         guard BiometricService.shared.isAvailable() else {
-            isUnlocked = true
+            onUnlock?()
             return
         }
         Task {
             do {
                 let success = try await BiometricService.shared.authenticate()
                 if success {
-                    isUnlocked = true
+                    onUnlock?()
                 } else {
                     showError = true
                     errorMessage = "Authentication failed"
@@ -84,24 +88,25 @@ struct LockScreenModifier: ViewModifier {
     @AppStorage("biometric_enabled") private var biometricEnabled = false
 
     func body(content: Content) -> some View {
-        content
-            .overlay {
-                if isLocked && biometricEnabled {
-                    BiometricLockView()
-                        .transition(.opacity)
-                        .animation(.easeInOut, value: isLocked)
-                }
+        Group {
+            if isLocked && biometricEnabled {
+                BiometricLockView(onUnlock: { isLocked = false })
+                    .transition(.opacity)
+                    .animation(.easeInOut, value: isLocked)
+            } else {
+                content
             }
-            .onReceive(NotificationCenter.default.publisher(for: UIApplication.willResignActiveNotification)) { _ in
-                if biometricEnabled {
-                    isLocked = true
-                }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: UIApplication.willResignActiveNotification)) { _ in
+            if biometricEnabled {
+                isLocked = true
             }
-            .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in
-                if biometricEnabled && isLocked {
-                    // Lock screen is already showing, authentication will unlock
-                }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in
+            if biometricEnabled && isLocked {
+                // Lock screen is already showing, authentication will unlock
             }
+        }
     }
 }
 

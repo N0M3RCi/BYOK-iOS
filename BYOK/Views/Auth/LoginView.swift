@@ -5,6 +5,12 @@ struct LoginView: View {
     @State private var email = ""
     @State private var password = ""
     @State private var showPassword = false
+    @FocusState private var focusedField: Field?
+
+    enum Field {
+        case email
+        case password
+    }
 
     var body: some View {
         ScrollView {
@@ -34,14 +40,17 @@ struct LoginView: View {
                         .padding()
                         .background(Color(.systemGray6))
                         .cornerRadius(12)
+                        .focused($focusedField, equals: .email)
 
                     HStack {
                         if showPassword {
                             TextField("Password", text: $password)
                                 .textContentType(.password)
+                                .focused($focusedField, equals: .password)
                         } else {
                             SecureField("Password", text: $password)
                                 .textContentType(.password)
+                                .focused($focusedField, equals: .password)
                         }
                         Button(action: { showPassword.toggle() }) {
                             Image(systemName: showPassword ? "eye.slash" : "eye")
@@ -94,6 +103,11 @@ struct LoginView: View {
                     .foregroundColor(.accentTeal)
                 }
                 .padding(.bottom, 40)
+            }
+        }
+        .onAppear {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                focusedField = .email
             }
         }
     }
