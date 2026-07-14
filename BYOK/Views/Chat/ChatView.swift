@@ -302,7 +302,7 @@ struct ChatView: View {
                         }
                     }
 
-                    if let provider = viewModel.selectedProvider {
+                    if viewModel.selectedProvider != nil {
                         Section("Models") {
                             if viewModel.providerModels.isEmpty {
                                 HStack { Spacer(); ProgressView("Loading..."); Spacer() }
