@@ -83,8 +83,7 @@ struct ModelSettingsView: View {
             }
             Section {
                 Button(action: { showingAddProvider = true }) { Label("Add Provider", systemImage: "plus") }
-                NavigationLink(destination: ModelValidationView(viewModel: viewModel)) { Label("Test Model", systemImage: "checkmark.circle") }
-            }
+                            }
         }
         .navigationTitle("Models")
         .sheet(isPresented: $showingAddProvider) { AddProviderView(viewModel: viewModel) }
@@ -344,45 +343,6 @@ struct AddProviderView: View {
             )
             modelsFetched = true
         }
-    }
-}
-
-// MARK: - Test Model
-struct ModelValidationView: View {
-    @ObservedObject var viewModel: SettingsViewModel
-    @State private var platform = "OPENAI"
-    @State private var modelType = "GPT_4O_MINI"
-    @State private var apiKey = ""
-    @State private var result: ModelValidationResult?
-
-    var body: some View {
-        Form {
-            Section("Configuration") {
-                Picker("Platform", selection: $platform) {
-                    ForEach(ModelPlatform.allCases, id: \.self) { Text($0.displayName).tag($0.rawValue) }
-                }
-                Picker("Model", selection: $modelType) {
-                    ForEach(ModelType.allCases, id: \.self) { Text($0.displayName).tag($0.rawValue) }
-                }
-                SecureField("API Key", text: $apiKey)
-            }
-            Section {
-                Button("Test Model") {
-                    Task { result = await viewModel.validateModel(platform: platform, modelType: modelType, apiKey: apiKey) }
-                }
-                .disabled(apiKey.isEmpty)
-            }
-            if let r = result {
-                Section("Result") {
-                    LabeledContent("Valid", value: r.isValid ? "Yes" : "No")
-                    if let msg = r.message { Text(msg).font(.caption).foregroundColor(.secondary) }
-                    if let e = r.error { Text(e).foregroundColor(.red) }
-                    if let stages = r.successfulStages {
-                        Text("Stages: \(stages.joined(separator: ", "))").font(.caption).foregroundColor(.secondary)
-                    }
-                }
-            }
-        }.navigationTitle("Test Model")
     }
 }
 

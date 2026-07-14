@@ -136,21 +136,6 @@ if let modelType = modelType {
         }
     }
 
-    func validateModel(platform: String, modelType: String, apiKey: String) async -> ModelValidationResult? {
-        do {
-            let body: [String: String] = [
-                "model_platform": platform,
-                "model_type": modelType,
-                "api_key": apiKey
-            ]
-            let result: ModelValidationResult = try await apiClient.brainPost(path: "/model/validate", body: body)
-            return result
-        } catch {
-            errorMessage = error.localizedDescription
-            return nil
-        }
-    }
-
     // MARK: - Provider Management
 
     func testProviderConnection(platform: String, apiKey: String, apiUrl: String?) async -> Bool {
