@@ -55,11 +55,14 @@ final class ChatViewModel: ObservableObject {
         selectedProvider = provider
         providerModels = []
         selectedProviderModel = nil
-        // Fetch models from the provider's API directly using the stored URL as-is
+        // Fetch models from the provider's API using {base_url}/models
         guard let apiKey = provider.apiKey, !apiKey.isEmpty,
-              let urlStr = provider.endpointUrl?.trimmingCharacters(in: .whitespacesAndNewlines),
-              !urlStr.isEmpty,
-              let url = URL(string: urlStr) else { return }
+              let endpointUrl = provider.endpointUrl,
+              !endpointUrl.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+        // Construct models endpoint URL
+        let trimmed = endpointUrl.trimmingCharacters(in: .whitespacesAndNewlines)
+        let modelsURL = trimmed.hasSuffix("/models") ? trimmed : (trimmed.hasSuffix("/") ? "\(trimmed)models" : "\(trimmed)/models")
+        guard let url = URL(string: modelsURL) else { return }
 
         Task {
             var request = URLRequest(url: url)

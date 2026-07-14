@@ -176,18 +176,30 @@ final class SettingsViewModel: ObservableObject {
 
     // MARK: - Provider Management
 
+    /// Construct the models endpoint URL from the user's base URL
+    private func modelsEndpointURL(from baseURL: String) -> URL? {
+        let trimmed = baseURL.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return nil }
+        // If URL already ends with /models, use it as-is
+        if trimmed.hasSuffix("/models") {
+            return URL(string: trimmed)
+        }
+        // Otherwise append /models
+        let modelsURL = trimmed.hasSuffix("/") ? "\(trimmed)models" : "\(trimmed)/models"
+        return URL(string: modelsURL)
+    }
+
     func testProviderConnection(platform: String, apiKey: String, apiUrl: String?) async -> Bool {
         isTesting = true
         testResult = nil
         defer { isTesting = false }
 
-        // Use the user-provided URL as-is, no path manipulation
-        guard let urlStr = apiUrl?.trimmingCharacters(in: .whitespacesAndNewlines), !urlStr.isEmpty else {
+        guard let apiUrl = apiUrl, !apiUrl.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
             testResult = "Please enter an API URL"
             return false
         }
-        guard let url = URL(string: urlStr) else {
-            testResult = "Invalid API URL: \(urlStr)"
+        guard let url = modelsEndpointURL(from: apiUrl) else {
+            testResult = "Invalid API URL: \(apiUrl)"
             return false
         }
 
@@ -204,7 +216,7 @@ final class SettingsViewModel: ObservableObject {
 
             APIDebugLogger.shared.log(
                 method: "GET",
-                path: urlStr,
+                path: url.absoluteString,
                 requestBody: ["api_key": apiKey.prefix(8) + "..."],
                 statusCode: statusCode,
                 responseBody: bodyStr
@@ -221,16 +233,9 @@ final class SettingsViewModel: ObservableObject {
                     ?? (json["error"] as? [String: Any])?["message"] as? String
                     ?? json["message"] as? String
                     ?? "HTTP \(statusCode)"
-                if statusCode == 404 {
-                    testResult = "URL not found (404). Try appending /models or /v1/models to your URL"
-                } else {
-                    testResult = msg
-                }
+                testResult = msg
             } else {
                 testResult = "HTTP \(statusCode): \(bodyStr.prefix(100))"
-                if statusCode == 404 {
-                    testResult = "URL not found (404). Try appending /models or /v1/models to your URL"
-                }
             }
             return false
         } catch {
@@ -238,7 +243,7 @@ final class SettingsViewModel: ObservableObject {
             testResult = "Connection failed: \(detail)"
             APIDebugLogger.shared.log(
                 method: "GET",
-                path: urlStr,
+                path: url.absoluteString,
                 requestBody: ["api_key": apiKey.prefix(8) + "..."],
                 statusCode: 0,
                 responseBody: "",
@@ -254,13 +259,12 @@ final class SettingsViewModel: ObservableObject {
         selectedModel = nil
         defer { isFetchingModels = false }
 
-        // Use the user-provided URL as-is, no path manipulation
-        guard let urlStr = apiUrl?.trimmingCharacters(in: .whitespacesAndNewlines), !urlStr.isEmpty else {
+        guard let apiUrl = apiUrl, !apiUrl.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
             errorMessage = "Please enter an API URL"
             return
         }
-        guard let url = URL(string: urlStr) else {
-            errorMessage = "Invalid API URL: \(urlStr)"
+        guard let url = modelsEndpointURL(from: apiUrl) else {
+            errorMessage = "Invalid API URL: \(apiUrl)"
             return
         }
 
@@ -277,7 +281,7 @@ final class SettingsViewModel: ObservableObject {
 
             APIDebugLogger.shared.log(
                 method: "GET",
-                path: urlStr,
+                path: url.absoluteString,
                 requestBody: ["api_key": apiKey.prefix(8) + "..."],
                 statusCode: statusCode,
                 responseBody: bodyStr
@@ -326,7 +330,7 @@ final class SettingsViewModel: ObservableObject {
             errorMessage = "Failed to fetch models: \(detail)"
             APIDebugLogger.shared.log(
                 method: "GET",
-                path: urlStr,
+                path: url.absoluteString,
                 requestBody: ["api_key": apiKey.prefix(8) + "..."],
                 statusCode: 0,
                 responseBody: "",
