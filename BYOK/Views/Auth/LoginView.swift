@@ -105,12 +105,7 @@ struct LoginView: View {
                 .padding(.bottom, 40)
             }
         }
-        .onAppear {
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                focusedField = .email
             }
-        }
-    }
 }
 
 #Preview {
