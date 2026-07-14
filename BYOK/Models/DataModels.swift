@@ -508,13 +508,13 @@ struct Provider: Codable, Identifiable, Equatable {
     let modelType: String?
     let apiKey: String?
     let endpointUrl: String?
-    let isValid: Bool?
+    let isValid: Int?
     let prefer: Bool?
 
     var name: String { providerName }
     var platform: String { providerName }
     var apiUrl: String? { endpointUrl }
-    var isActive: Bool { isValid ?? false }
+    var isActive: Bool { isValid == 1 }
     var providerId: String { "\(id)" }
 
     enum CodingKeys: String, CodingKey {
@@ -533,11 +533,11 @@ struct PaginatedResponse<T: Codable>: Codable {
     let items: [T]
     let total: Int
     let page: Int
-    let pageSize: Int
+    let size: Int
+    let pages: Int
 
     enum CodingKeys: String, CodingKey {
-        case items, total, page
-        case pageSize = "page_size"
+        case items, total, page, size, pages
     }
 }
 
