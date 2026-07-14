@@ -11,7 +11,6 @@ struct ChatView: View {
     @State private var showKnowledgeBasePicker = false
     @State private var showImagePicker = false
     @State private var selectedPhotos: [PhotosPickerItem] = []
-    @FocusState private var isInputFocused: Bool
 
     init(projectID: String? = nil) {
         self.projectID = projectID
@@ -164,12 +163,15 @@ struct ChatView: View {
                             }
                         }
 
-                        TextField(viewModel.editingMessageId != nil ? "Edit message..." : "Message...", text: $viewModel.currentInput)
-                            .textFieldStyle(.plain)
-                            .padding(10)
-                            .background(Color(.systemGray6))
-                            .cornerRadius(20)
-                            .focused($isInputFocused)
+                        UIKitTextField(
+                            text: $viewModel.currentInput,
+                            placeholder: viewModel.editingMessageId != nil ? "Edit message..." : "Message...",
+                            backgroundColor: UIColor.systemGray6,
+                            cornerRadius: 20,
+                            leftPadding: 16,
+                            shouldBecomeFirstResponder: false
+                        )
+                        .frame(height: 40)
 
                         if viewModel.isStreaming {
                             Button(action: { viewModel.stopStreaming() }) {

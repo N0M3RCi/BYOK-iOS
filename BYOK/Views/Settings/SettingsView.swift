@@ -204,15 +204,33 @@ struct AddProviderView: View {
         NavigationStack {
             Form {
                 Section("Platform") {
-                    TextField("Platform name (e.g. openai, near)", text: $platform)
-                        .autocapitalization(.none).disableAutocorrection(true)
+                    UIKitTextField(
+                        text: $platform,
+                        placeholder: "Platform name (e.g. openai, near)",
+                        leftPadding: 16,
+                        shouldBecomeFirstResponder: false
+                    )
+                    .frame(height: 44)
                 }
 
                 Section("Credentials") {
-                    SecureField("API Key", text: $apiKey)
-                    TextField("Provider API URL", text: $apiUrl)
-                        .keyboardType(.URL).autocapitalization(.none).disableAutocorrection(true)
-                }
+                    UIKitTextField(
+                        text: $apiKey,
+                        placeholder: "API Key",
+                        isSecure: true,
+                        leftPadding: 16,
+                        shouldBecomeFirstResponder: false
+                    )
+                    .frame(height: 44)
+
+                    UIKitTextField(
+                        text: $apiUrl,
+                        placeholder: "Provider API URL",
+                        keyboardType: .URL,
+                        leftPadding: 16,
+                        shouldBecomeFirstResponder: false
+                    )
+                    .frame(height: 44)
 
                 // Step 1: Test Connection
                 Section {

@@ -25,7 +25,5 @@
     </array>
     <key>NSFaceIDUsageDescription</key>
     <string>M3RCI uses Face ID to unlock the app securely.</string>
-    <key>UIApplicationSupportsIndirectInputEvents</key>
-    <true/>
-</dict>
+    </dict>
 </plist>

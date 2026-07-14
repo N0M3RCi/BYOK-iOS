@@ -18,7 +18,6 @@ struct PasscodeGateView: View {
     @State private var adminPassword = ""
     @State private var registeredPasscode: String?
     @State private var localError: String?
-    @FocusState private var focusedField: String?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -98,23 +97,22 @@ struct PasscodeGateView: View {
                 .font(.headline)
                 .foregroundColor(Color(red: 0.25, green: 0.25, blue: 0.35))
 
-            TextField("6-digit passcode", text: $passcode)
-                .textFieldStyle(.plain)
-                .padding()
-                .background(
-                    RoundedRectangle(cornerRadius: 10)
-                        .fill(Color(red: 0.96, green: 0.96, blue: 0.98))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 10)
-                                .stroke(Color(red: 0.85, green: 0.85, blue: 0.92), lineWidth: 1)
-                        )
-                )
-                .foregroundColor(Color(red: 0.2, green: 0.2, blue: 0.3))
-                .keyboardType(.numberPad)
-                .multilineTextAlignment(.center)
-                .font(.system(size: 24, design: .monospaced))
-                .focused($focusedField, equals: "passcode")
-                .onChange(of: passcode) { newValue in
+            UIKitTextField(
+                text: $passcode,
+                placeholder: "6-digit passcode",
+                keyboardType: .numberPad,
+                textAlignment: .center,
+                font: .monospacedSystemFont(ofSize: 24, weight: .regular),
+                textColor: UIColor(red: 0.2, green: 0.2, blue: 0.3, alpha: 1),
+                backgroundColor: UIColor(red: 0.96, green: 0.96, blue: 0.98, alpha: 1),
+                cornerRadius: 10,
+                borderColor: UIColor(red: 0.85, green: 0.85, blue: 0.92, alpha: 1),
+                borderWidth: 1,
+                leftPadding: 16,
+                shouldBecomeFirstResponder: false
+            )
+            .frame(height: 50)
+            .onChange(of: passcode) { newValue in
                     let filtered = newValue.filter(\.isNumber)
                     if filtered.count > 6 { passcode = String(filtered.prefix(6)) }
                     else { passcode = filtered }
@@ -220,35 +218,33 @@ struct PasscodeGateView: View {
                 .foregroundColor(Color(red: 0.25, green: 0.25, blue: 0.35))
 
             VStack(spacing: 12) {
-                TextField("Email", text: $adminEmail)
-                    .textFieldStyle(.plain)
-                    .padding()
-                    .background(
-                        RoundedRectangle(cornerRadius: 10)
-                            .fill(Color(red: 0.96, green: 0.96, blue: 0.98))
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 10)
-                                    .stroke(Color(red: 0.85, green: 0.85, blue: 0.92), lineWidth: 1)
-                            )
-                    )
-                    .foregroundColor(Color(red: 0.2, green: 0.2, blue: 0.3))
-                    .keyboardType(.emailAddress)
-                    .autocapitalization(.none)
-                    .focused($focusedField, equals: "adminEmail")
+                UIKitTextField(
+                    text: $adminEmail,
+                    placeholder: "Email",
+                    keyboardType: .emailAddress,
+                    textColor: UIColor(red: 0.2, green: 0.2, blue: 0.3, alpha: 1),
+                    backgroundColor: UIColor(red: 0.96, green: 0.96, blue: 0.98, alpha: 1),
+                    cornerRadius: 10,
+                    borderColor: UIColor(red: 0.85, green: 0.85, blue: 0.92, alpha: 1),
+                    borderWidth: 1,
+                    leftPadding: 16,
+                    shouldBecomeFirstResponder: false
+                )
+                .frame(height: 50)
 
-                SecureField("Password", text: $adminPassword)
-                    .textFieldStyle(.plain)
-                    .padding()
-                    .background(
-                        RoundedRectangle(cornerRadius: 10)
-                            .fill(Color(red: 0.96, green: 0.96, blue: 0.98))
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 10)
-                                    .stroke(Color(red: 0.85, green: 0.85, blue: 0.92), lineWidth: 1)
-                            )
-                    )
-                    .foregroundColor(Color(red: 0.2, green: 0.2, blue: 0.3))
-                    .focused($focusedField, equals: "adminPassword")
+                UIKitTextField(
+                    text: $adminPassword,
+                    placeholder: "Password",
+                    isSecure: true,
+                    textColor: UIColor(red: 0.2, green: 0.2, blue: 0.3, alpha: 1),
+                    backgroundColor: UIColor(red: 0.96, green: 0.96, blue: 0.98, alpha: 1),
+                    cornerRadius: 10,
+                    borderColor: UIColor(red: 0.85, green: 0.85, blue: 0.92, alpha: 1),
+                    borderWidth: 1,
+                    leftPadding: 16,
+                    shouldBecomeFirstResponder: false
+                )
+                .frame(height: 50)
             }
 
             Button("Sign In") {
