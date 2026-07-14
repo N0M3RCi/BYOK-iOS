@@ -92,11 +92,11 @@ final class SettingsViewModel: ObservableObject {
     func loadProviders() {
         Task {
             do {
-                let response: [Provider] = try await apiClient.apiRequest(
+                let response: PaginatedResponse<Provider> = try await apiClient.apiRequest(
                     method: "GET",
-                    path: "/provider"
+                    path: "/providers"
                 )
-                providers = response
+                providers = response.items
             } catch {
                 errorMessage = error.localizedDescription
             }
@@ -106,10 +106,14 @@ final class SettingsViewModel: ObservableObject {
     func addProvider(platform: String, apiKey: String, apiUrl: String?, modelType: String? = nil) async {
         do {
             var body: [String: String] = [
+                "provider_name": platform,
+                "endpoint_url": apiUrl ?? "https://api.openai.com/v1",
+                "api_key": apiKey,
                 "platform": platform,
-                "api_key": apiKey
+                "api_url": apiUrl ?? ""
             ]
-            if let url = apiUrl, !url.isEmpty { body["api_url"] = url }
+            if let url = apiUrl, !url.isEmpty { body["endpoint_url"] = url; body["api_url"] = url }
+            if let model = modelType, !model.isEmpty { body["model_type"] = model }
             let provider: Provider = try await apiClient.apiRequest(
                 method: "POST",
                 path: "/provider",
@@ -117,7 +121,7 @@ final class SettingsViewModel: ObservableObject {
             )
 if let modelType = modelType {
                 let modelBody: [String: String] = [
-                    "provider_id": provider.id,
+                    "provider_id": "\(provider.id)",
                     "model_type": modelType
                 ]
                 let _: EmptyResponse = try await apiClient.apiRequest(

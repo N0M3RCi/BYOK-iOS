@@ -119,7 +119,7 @@ struct ProviderDetailView: View {
                 ForEach(models) { model in
                     Button(action: {
                         selectedModel = model.id
-                        viewModel.setActiveModel(providerId: provider.id, modelType: model.id)
+                        viewModel.setActiveModel(providerId: String(provider.id), modelType: model.id)
                     }) {
                         HStack {
                             Text(model.name)

@@ -503,20 +503,28 @@ struct AdminUser: Codable, Identifiable, Equatable {
 
 // MARK: - Provider
 struct Provider: Codable, Identifiable, Equatable {
-    let id: String
-    let name: String
-    let platform: String
+    let id: Int
+    let providerName: String
+    let modelType: String?
     let apiKey: String?
-    let apiUrl: String?
-    let isActive: Bool
+    let endpointUrl: String?
+    let isValid: Bool?
+    let prefer: Bool?
 
-    var providerId: String { id }
+    var name: String { providerName }
+    var platform: String { providerName }
+    var apiUrl: String? { endpointUrl }
+    var isActive: Bool { isValid ?? false }
+    var providerId: String { "\(id)" }
 
     enum CodingKeys: String, CodingKey {
-        case id, name, platform
+        case id
+        case providerName = "provider_name"
+        case modelType = "model_type"
         case apiKey = "api_key"
-        case apiUrl = "api_url"
-        case isActive = "is_active"
+        case endpointUrl = "endpoint_url"
+        case isValid = "is_valid"
+        case prefer
     }
 }
 
