@@ -55,11 +55,11 @@ final class ChatViewModel: ObservableObject {
         selectedProvider = provider
         providerModels = []
         selectedProviderModel = nil
-        // Fetch models from the provider's API directly
-        guard let apiKey = provider.apiKey, !apiKey.isEmpty else { return }
-        let baseURL = provider.endpointUrl ?? "https://api.openai.com/v1"
-        let modelsURL = baseURL.hasSuffix("/v1") ? "\(baseURL)/models" : "\(baseURL)/v1/models"
-        guard let url = URL(string: modelsURL) else { return }
+        // Fetch models from the provider's API directly using the stored URL as-is
+        guard let apiKey = provider.apiKey, !apiKey.isEmpty,
+              let urlStr = provider.endpointUrl?.trimmingCharacters(in: .whitespacesAndNewlines),
+              !urlStr.isEmpty,
+              let url = URL(string: urlStr) else { return }
 
         Task {
             var request = URLRequest(url: url)

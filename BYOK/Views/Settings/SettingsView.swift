@@ -191,7 +191,7 @@ struct ProviderDetailView: View {
 struct AddProviderView: View {
     @ObservedObject var viewModel: SettingsViewModel
     @Environment(\.dismiss) var dismiss
-    @State private var platform = "openai"
+    @State private var platform = ""
     @State private var apiKey = ""
     @State private var apiUrl = ""
     @State private var connectionTested = false
@@ -210,7 +210,7 @@ struct AddProviderView: View {
 
                 Section("Credentials") {
                     SecureField("API Key", text: $apiKey)
-                    TextField("API URL (optional)", text: $apiUrl)
+                    TextField("Provider API URL", text: $apiUrl)
                         .keyboardType(.URL).autocapitalization(.none).disableAutocorrection(true)
                 }
 
@@ -224,7 +224,7 @@ struct AddProviderView: View {
                             Text(connectionTested ? "Retest Connection" : "Test Connection")
                         }
                     }
-                    .disabled(apiKey.isEmpty || viewModel.isTesting)
+                    .disabled(apiKey.isEmpty || apiUrl.trimmingCharacters(in: .whitespaces).isEmpty || viewModel.isTesting)
 
                     if let result = viewModel.testResult {
                         HStack {
@@ -302,7 +302,7 @@ struct AddProviderView: View {
                             dismiss()
                         }
                     }
-                    .disabled(apiKey.isEmpty)
+                    .disabled(apiKey.isEmpty || platform.trimmingCharacters(in: .whitespaces).isEmpty)
                 }
             }
         }

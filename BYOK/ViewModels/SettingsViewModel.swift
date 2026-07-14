@@ -96,7 +96,38 @@ final class SettingsViewModel: ObservableObject {
                     method: "GET",
                     path: "/providers"
                 )
-                providers = response.items
+                // Merge locally stored API keys and URLs into providers (server may not return them)
+                providers = response.items.map { provider in
+                    var p = provider
+                    let keychain = KeychainManager.shared
+                    if p.apiKey == nil || p.apiKey?.isEmpty == true {
+                        if let localKey = keychain.getProviderAPIKey(forProviderId: p.id) {
+                            p = Provider(
+                                id: p.id,
+                                providerName: p.providerName,
+                                modelType: p.modelType,
+                                apiKey: localKey,
+                                endpointUrl: p.endpointUrl,
+                                isValid: p.isValid,
+                                prefer: p.prefer
+                            )
+                        }
+                    }
+                    if p.endpointUrl == nil || p.endpointUrl?.isEmpty == true {
+                        if let localURL = keychain.getProviderURL(forProviderId: p.id) {
+                            p = Provider(
+                                id: p.id,
+                                providerName: p.providerName,
+                                modelType: p.modelType,
+                                apiKey: p.apiKey,
+                                endpointUrl: localURL,
+                                isValid: p.isValid,
+                                prefer: p.prefer
+                            )
+                        }
+                    }
+                    return p
+                }
             } catch {
                 errorMessage = error.localizedDescription
             }
@@ -107,7 +138,7 @@ final class SettingsViewModel: ObservableObject {
         do {
             var body: [String: String] = [
                 "provider_name": platform,
-                "endpoint_url": apiUrl ?? "https://api.openai.com/v1",
+                "endpoint_url": apiUrl ?? "",
                 "api_key": apiKey,
                 "platform": platform,
                 "api_url": apiUrl ?? ""
@@ -119,7 +150,14 @@ final class SettingsViewModel: ObservableObject {
                 path: "/provider",
                 body: body
             )
-if let modelType = modelType {
+            // Save API key and URL locally since server may not return them
+            let keychain = KeychainManager.shared
+            keychain.saveProviderAPIKey(apiKey, forProviderId: provider.id)
+            if let url = apiUrl, !url.isEmpty {
+                keychain.saveProviderURL(url, forProviderId: provider.id)
+            }
+
+            if let modelType = modelType {
                 let modelBody: [String: String] = [
                     "provider_id": "\(provider.id)",
                     "model_type": modelType
@@ -143,18 +181,13 @@ if let modelType = modelType {
         testResult = nil
         defer { isTesting = false }
 
-        // Determine the base URL for the API
-        let baseURL: String
-        if let url = apiUrl, !url.isEmpty {
-            baseURL = url.hasSuffix("/") ? String(url.dropLast()) : url
-        } else {
-            baseURL = "https://api.openai.com/v1"
+        // Use the user-provided URL as-is, no path manipulation
+        guard let urlStr = apiUrl?.trimmingCharacters(in: .whitespacesAndNewlines), !urlStr.isEmpty else {
+            testResult = "Please enter an API URL"
+            return false
         }
-
-        // Try direct API call to the provider's models endpoint
-        let modelsURL = baseURL.hasSuffix("/v1") ? "\(baseURL)/models" : "\(baseURL)/v1/models"
-        guard let url = URL(string: modelsURL) else {
-            testResult = "Invalid API URL: \(modelsURL)"
+        guard let url = URL(string: urlStr) else {
+            testResult = "Invalid API URL: \(urlStr)"
             return false
         }
 
@@ -171,7 +204,7 @@ if let modelType = modelType {
 
             APIDebugLogger.shared.log(
                 method: "GET",
-                path: modelsURL,
+                path: urlStr,
                 requestBody: ["api_key": apiKey.prefix(8) + "..."],
                 statusCode: statusCode,
                 responseBody: bodyStr
@@ -198,7 +231,7 @@ if let modelType = modelType {
             testResult = "Connection failed: \(detail)"
             APIDebugLogger.shared.log(
                 method: "GET",
-                path: modelsURL,
+                path: urlStr,
                 requestBody: ["api_key": apiKey.prefix(8) + "..."],
                 statusCode: 0,
                 responseBody: "",
@@ -214,18 +247,13 @@ if let modelType = modelType {
         selectedModel = nil
         defer { isFetchingModels = false }
 
-        // Determine the base URL
-        let baseURL: String
-        if let url = apiUrl, !url.isEmpty {
-            baseURL = url.hasSuffix("/") ? String(url.dropLast()) : url
-        } else {
-            baseURL = "https://api.openai.com/v1"
+        // Use the user-provided URL as-is, no path manipulation
+        guard let urlStr = apiUrl?.trimmingCharacters(in: .whitespacesAndNewlines), !urlStr.isEmpty else {
+            errorMessage = "Please enter an API URL"
+            return
         }
-
-        // Call the provider's models endpoint directly
-        let modelsURL = baseURL.hasSuffix("/v1") ? "\(baseURL)/models" : "\(baseURL)/v1/models"
-        guard let url = URL(string: modelsURL) else {
-            errorMessage = "Invalid API URL: \(modelsURL)"
+        guard let url = URL(string: urlStr) else {
+            errorMessage = "Invalid API URL: \(urlStr)"
             return
         }
 
@@ -242,7 +270,7 @@ if let modelType = modelType {
 
             APIDebugLogger.shared.log(
                 method: "GET",
-                path: modelsURL,
+                path: urlStr,
                 requestBody: ["api_key": apiKey.prefix(8) + "..."],
                 statusCode: statusCode,
                 responseBody: bodyStr
@@ -283,7 +311,7 @@ if let modelType = modelType {
             errorMessage = "Failed to fetch models: \(detail)"
             APIDebugLogger.shared.log(
                 method: "GET",
-                path: modelsURL,
+                path: urlStr,
                 requestBody: ["api_key": apiKey.prefix(8) + "..."],
                 statusCode: 0,
                 responseBody: "",
@@ -320,6 +348,8 @@ if let modelType = modelType {
                         method: "DELETE",
                         path: "/provider/\(provider.id)"
                     )
+                    // Also delete locally stored API key and URL
+                    KeychainManager.shared.deleteProviderKeys(forProviderId: provider.id)
                 } catch {
                     errorMessage = error.localizedDescription
                 }

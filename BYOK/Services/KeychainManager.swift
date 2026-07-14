@@ -69,6 +69,34 @@ final class KeychainManager: @unchecked Sendable {
         delete(key: passcodeKey)
     }
 
+    // MARK: - Provider API Keys
+
+    private func providerAPIKeyKey(_ id: Int) -> String { "com.byok.provider.\(id).api_key" }
+    private func providerURLKey(_ id: Int) -> String { "com.byok.provider.\(id).api_url" }
+
+    func saveProviderAPIKey(_ key: String, forProviderId id: Int) {
+        save(key: providerAPIKeyKey(id), data: Data(key.utf8))
+    }
+
+    func getProviderAPIKey(forProviderId id: Int) -> String? {
+        guard let data = read(key: providerAPIKeyKey(id)) else { return nil }
+        return String(data: data, encoding: .utf8)
+    }
+
+    func saveProviderURL(_ url: String, forProviderId id: Int) {
+        save(key: providerURLKey(id), data: Data(url.utf8))
+    }
+
+    func getProviderURL(forProviderId id: Int) -> String? {
+        guard let data = read(key: providerURLKey(id)) else { return nil }
+        return String(data: data, encoding: .utf8)
+    }
+
+    func deleteProviderKeys(forProviderId id: Int) {
+        delete(key: providerAPIKeyKey(id))
+        delete(key: providerURLKey(id))
+    }
+
     // MARK: - Clear All
 
     func clearAll() {
