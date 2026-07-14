@@ -9,8 +9,6 @@ final class ChatViewModel: ObservableObject {
     @Published var isLoading = false
     @Published var isStreaming = false
     @Published var errorMessage: String?
-    @Published var selectedModel: ModelType = .GPT_4O_MINI
-    @Published var selectedPlatform: ModelPlatform = .OPENAI
     @Published var currentProjectID: String?
     @Published var currentTaskID: String?
     @Published var showReasoning = false
@@ -20,9 +18,79 @@ final class ChatViewModel: ObservableObject {
     @Published var tokenUsage: (input: Int, output: Int)?
     @Published var showModelPicker = false
 
+    // Provider-based model selection
+    @Published var providers: [Provider] = []
+    @Published var selectedProvider: Provider?
+    @Published var providerModels: [ProviderModel] = []
+    @Published var selectedProviderModel: ProviderModel?
+    @Published var isLoadingProviders = false
+
     private let apiClient = APIClient.shared
     private let keychain = KeychainManager.shared
     private var streamer: SSEStreamer?
+
+    // MARK: - Provider & Model Loading
+
+    func loadProviders() {
+        isLoadingProviders = true
+        Task {
+            do {
+                let response: PaginatedResponse<Provider> = try await apiClient.apiRequest(
+                    method: "GET",
+                    path: "/providers"
+                )
+                providers = response.items
+                // Auto-select first provider if none selected
+                if selectedProvider == nil, let first = providers.first {
+                    selectProvider(first)
+                }
+            } catch {
+                errorMessage = error.localizedDescription
+            }
+            isLoadingProviders = false
+        }
+    }
+
+    func selectProvider(_ provider: Provider) {
+        selectedProvider = provider
+        providerModels = []
+        selectedProviderModel = nil
+        // Fetch models from the provider's API directly
+        guard let apiKey = provider.apiKey, !apiKey.isEmpty else { return }
+        let baseURL = provider.endpointUrl ?? "https://api.openai.com/v1"
+        let modelsURL = baseURL.hasSuffix("/v1") ? "\(baseURL)/models" : "\(baseURL)/v1/models"
+        guard let url = URL(string: modelsURL) else { return }
+
+        Task {
+            var request = URLRequest(url: url)
+            request.httpMethod = "GET"
+            request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
+            request.timeoutInterval = 15
+            if let (data, _) = try? await URLSession.shared.data(for: request),
+               let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+               let models = json["data"] as? [[String: Any]] {
+                providerModels = models.compactMap { model in
+                    guard let id = model["id"] as? String else { return nil }
+                    let name = model["name"] as? String ?? id
+                    return ProviderModel(id: id, name: name)
+                }
+                // Auto-select first model
+                if selectedProviderModel == nil, let first = providerModels.first {
+                    selectedProviderModel = first
+                }
+            }
+        }
+    }
+
+    var modelDisplayName: String {
+        if let model = selectedProviderModel {
+            if let provider = selectedProvider {
+                return "\(provider.name) - \(model.name)"
+            }
+            return model.name
+        }
+        return "No model selected"
+    }
 
     // MARK: - Start New Chat
 
@@ -92,15 +160,21 @@ final class ChatViewModel: ObservableObject {
             keychain.saveSessionID(sessionID)
         }
 
+        // Use the selected provider's API key and URL, or empty defaults
+        let apiKey = selectedProvider?.apiKey ?? ""
+        let apiUrl = selectedProvider?.endpointUrl
+        let modelType = selectedProviderModel?.id ?? "gpt-4o"
+        let modelPlatform = selectedProvider?.providerName ?? "OPENAI"
+
         let request = ChatRequest(
             taskId: taskID,
             projectId: projectID,
             question: question,
             email: email,
-            modelPlatform: selectedPlatform.rawValue,
-            modelType: selectedModel.rawValue,
-            apiKey: "",
-            apiUrl: nil,
+            modelPlatform: modelPlatform,
+            modelType: modelType,
+            apiKey: apiKey,
+            apiUrl: apiUrl,
             language: LocalizationManager.shared.currentLanguage.rawValue,
             sessionMode: "workforce",
             userId: userID,
@@ -358,19 +432,5 @@ final class ChatViewModel: ObservableObject {
             av.popoverPresentationController?.sourceView = root.view
             root.present(av, animated: true)
         }
-    }
-
-    // MARK: - Model Provider/Type Helpers
-
-    var availableModels: [ModelType] {
-        ModelType.allCases
-    }
-
-    var availablePlatforms: [ModelPlatform] {
-        ModelPlatform.allCases
-    }
-
-    var modelDisplayName: String {
-        "\(selectedPlatform.displayName) - \(selectedModel.displayName)"
     }
 }

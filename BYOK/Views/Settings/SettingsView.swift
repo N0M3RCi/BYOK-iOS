@@ -192,7 +192,7 @@ struct ProviderDetailView: View {
 struct AddProviderView: View {
     @ObservedObject var viewModel: SettingsViewModel
     @Environment(\.dismiss) var dismiss
-    @State private var platform = "OPENAI"
+    @State private var platform = "openai"
     @State private var apiKey = ""
     @State private var apiUrl = ""
     @State private var connectionTested = false
@@ -205,9 +205,8 @@ struct AddProviderView: View {
         NavigationStack {
             Form {
                 Section("Platform") {
-                    Picker("Platform", selection: $platform) {
-                        ForEach(ModelPlatform.allCases, id: \.self) { Text($0.displayName).tag($0.rawValue) }
-                    }
+                    TextField("Platform name (e.g. openai, near)", text: $platform)
+                        .autocapitalization(.none).disableAutocorrection(true)
                 }
 
                 Section("Credentials") {
@@ -325,6 +324,13 @@ struct AddProviderView: View {
                 viewModel.availableModels = []
                 selectedModelId = nil
                 modelsFetched = false
+                // Auto-fetch models on successful connection
+                await viewModel.fetchProviderModels(
+                    platform: platform,
+                    apiKey: apiKey,
+                    apiUrl: apiUrl.isEmpty ? nil : apiUrl
+                )
+                modelsFetched = true
             }
         }
     }

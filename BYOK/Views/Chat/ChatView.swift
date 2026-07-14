@@ -244,6 +244,9 @@ struct ChatView: View {
                 }
             }
         }
+        .onAppear {
+            viewModel.loadProviders()
+        }
     }
 
     private var emptyChatView: some View {
@@ -263,23 +266,65 @@ struct ChatView: View {
     private var modelPickerSheet: some View {
         NavigationStack {
             Form {
-                Section("Platform") {
-                    Picker("Platform", selection: $viewModel.selectedPlatform) {
-                        ForEach(ModelPlatform.allCases, id: \.self) { platform in
-                            Text(platform.displayName).tag(platform)
+                if viewModel.providers.isEmpty {
+                    Section {
+                        if viewModel.isLoadingProviders {
+                            HStack { Spacer(); ProgressView(); Spacer() }
+                        } else {
+                            VStack(spacing: 8) {
+                                Image(systemName: "tray").font(.title2).foregroundColor(.secondary)
+                                Text("No providers configured")
+                                    .font(.headline)
+                                Text("Go to Settings > Models to add a provider")
+                                    .font(.caption).foregroundColor(.secondary)
+                            }
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 20)
                         }
                     }
-                }
-                Section("Model") {
-                    Picker("Model", selection: $viewModel.selectedModel) {
-                        ForEach(ModelType.allCases, id: \.self) { model in
-                            Text(model.displayName).tag(model)
+                } else {
+                    Section("Provider") {
+                        ForEach(viewModel.providers) { provider in
+                            Button(action: { viewModel.selectProvider(provider) }) {
+                                HStack {
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text(provider.name).fontWeight(.medium)
+                                        if let url = provider.endpointUrl, !url.isEmpty {
+                                            Text(url).font(.caption).foregroundColor(.secondary)
+                                        }
+                                    }
+                                    Spacer()
+                                    if viewModel.selectedProvider?.id == provider.id {
+                                        Image(systemName: "checkmark").foregroundColor(.blue)
+                                    }
+                                }
+                            }
                         }
                     }
-                }
-                Section {
-                    Text("Selected: \(viewModel.modelDisplayName)")
-                        .foregroundColor(.secondary)
+
+                    if let provider = viewModel.selectedProvider {
+                        Section("Models") {
+                            if viewModel.providerModels.isEmpty {
+                                HStack { Spacer(); ProgressView("Loading..."); Spacer() }
+                                    .padding(.vertical, 8)
+                            } else {
+                                ForEach(viewModel.providerModels) { model in
+                                    Button(action: {
+                                        viewModel.selectedProviderModel = model
+                                        viewModel.showModelPicker = false
+                                    }) {
+                                        HStack {
+                                            Text(model.name).foregroundColor(.primary)
+                                            Spacer()
+                                            if viewModel.selectedProviderModel?.id == model.id {
+                                                Image(systemName: "checkmark").foregroundColor(.blue)
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
             }
             .navigationTitle("Chat Model")
