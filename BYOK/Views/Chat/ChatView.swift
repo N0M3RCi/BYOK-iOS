@@ -64,6 +64,7 @@ struct ChatView: View {
                 .overlay {
                     if viewModel.messages.isEmpty && !viewModel.isLoading {
                         emptyChatView
+                            .allowsHitTesting(false)
                     }
                     if let error = viewModel.errorMessage {
                         VStack {

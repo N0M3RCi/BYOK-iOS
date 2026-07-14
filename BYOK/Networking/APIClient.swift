@@ -276,7 +276,7 @@ final class APIClient: @unchecked Sendable {
     // MARK: - Multipart Upload
 
     func uploadFile(data: Data, filename: String) async throws -> FileUploadResponse {
-        let url = try buildURL(base: APIConfig.shared.brainServiceURL, path: "/files")
+        let url = try buildURL(base: APIConfig.shared.apiBaseURL, path: "/files")
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
 
