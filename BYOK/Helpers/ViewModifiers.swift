@@ -19,23 +19,7 @@ struct EmptyStateView: View {
     }
 }
 
-extension String {
-    func fileIcon() -> String {
-        let ext = (self as NSString).pathExtension.lowercased()
-        switch ext {
-        case "jpg", "jpeg", "png", "gif", "svg", "webp", "heic": return "photo"
-        case "pdf": return "doc.richtext"
-        case "swift", "py", "js", "ts", "html", "css", "rb", "go", "rs": return "doc.text"
-        case "md", "txt": return "doc.text.fill"
-        case "zip", "tar", "gz", "rar": return "folder.compress"
-        case "mp3", "wav", "aac", "m4a": return "music.note"
-        case "mp4", "mov", "avi": return "video"
-        case "json", "yaml", "yml", "xml", "toml": return "gearshape"
-        default: return "doc"
-        }
-    }
-}
-
+@MainActor
 enum HapticFeedback {
     static func light() { UIImpactFeedbackGenerator(style: .light).impactOccurred() }
     static func medium() { UIImpactFeedbackGenerator(style: .medium).impactOccurred() }
