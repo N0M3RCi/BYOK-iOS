@@ -87,7 +87,7 @@ struct ModelSettingsView: View {
         }
         .navigationTitle("Models")
         .sheet(isPresented: $showingAddProvider) { AddProviderView(viewModel: viewModel) }
-        .onAppear { viewModel.loadProviders() }
+        .onAppear { Task { await viewModel.loadProviders() } }
     }
 }
 

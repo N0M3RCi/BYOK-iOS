@@ -89,15 +89,14 @@ final class SettingsViewModel: ObservableObject {
         }
     }
 
-    func loadProviders() {
-        Task {
-            do {
-                let response: PaginatedResponse<Provider> = try await apiClient.apiRequest(
-                    method: "GET",
-                    path: "/providers"
-                )
-                // Merge locally stored API keys and URLs into providers (server may not return them)
-                providers = response.items.map { provider in
+    func loadProviders() async {
+        do {
+            let response: PaginatedResponse<Provider> = try await apiClient.apiRequest(
+                method: "GET",
+                path: "/providers"
+            )
+            // Merge locally stored API keys and URLs into providers (server may not return them)
+            providers = response.items.map { provider in
                     var p = provider
                     let keychain = KeychainManager.shared
                     if p.apiKey == nil || p.apiKey?.isEmpty == true {
@@ -131,7 +130,6 @@ final class SettingsViewModel: ObservableObject {
             } catch {
                 errorMessage = error.localizedDescription
             }
-        }
     }
 
     func addProvider(platform: String, apiKey: String, apiUrl: String?, modelType: String? = nil) async {
@@ -168,7 +166,7 @@ final class SettingsViewModel: ObservableObject {
                     body: modelBody
                 )
             }
-            loadProviders()
+            await loadProviders()
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -373,7 +371,7 @@ final class SettingsViewModel: ObservableObject {
                     errorMessage = error.localizedDescription
                 }
             }
-            loadProviders()
+            await loadProviders()
         }
     }
 }
