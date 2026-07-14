@@ -34,6 +34,22 @@ final class SSEStreamer: @unchecked Sendable {
 
                     guard let httpResponse = response as? HTTPURLResponse,
                           (200...299).contains(httpResponse.statusCode) else {
+                        let statusCode = (response as? HTTPURLResponse)?.statusCode ?? 0
+                        // Read error body
+                        var errorData = Data()
+                        for try await byte in bytes {
+                            errorData.append(byte)
+                        }
+                        let errorBody = String(data: errorData, encoding: .utf8)
+                            ?? "Connection failed (HTTP \(statusCode))"
+                        continuation.yield(SSEEvent(
+                            step: "error",
+                            data: SSEEventData(
+                                content: nil, taskId: nil, tool: nil,
+                                args: nil, result: nil, agent: nil,
+                                message: errorBody
+                            )
+                        ))
                         continuation.finish()
                         return
                     }
@@ -60,6 +76,15 @@ final class SSEStreamer: @unchecked Sendable {
                     }
                     continuation.finish()
                 } catch {
+                    let errorMessage = error.localizedDescription
+                    continuation.yield(SSEEvent(
+                        step: "error",
+                        data: SSEEventData(
+                            content: nil, taskId: nil, tool: nil,
+                            args: nil, result: nil, agent: nil,
+                            message: errorMessage
+                        )
+                    ))
                     continuation.finish()
                 }
             }

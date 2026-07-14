@@ -29,6 +29,12 @@ final class AuthViewModel: ObservableObject {
                 authState = .needsPasscode
                 return
             }
+            // Ensure all required auth fields exist (userID was not saved before fix)
+            guard keychain.getEmail() != nil, keychain.getUserID() != nil else {
+                keychain.clearAll()
+                authState = .needsLogin
+                return
+            }
             self.token = token
             // Token exists — go straight to authenticated
             authState = .authenticated
@@ -53,6 +59,9 @@ final class AuthViewModel: ObservableObject {
                 keychain.saveToken(token)
                 if let email = response["email"] as? String {
                     keychain.saveEmail(email)
+                }
+                if let userID = response["user_id"] ?? response["userId"] {
+                    keychain.saveUserID("\(userID)")
                 }
                 authState = .authenticated
                 return nil
@@ -117,6 +126,9 @@ final class AuthViewModel: ObservableObject {
                 self.token = token
                 keychain.saveToken(token)
                 keychain.saveEmail(email)
+                if let userID = response["user_id"] ?? response["userId"] {
+                    keychain.saveUserID("\(userID)")
+                }
                 authState = .authenticated
                 return nil
             }
@@ -151,6 +163,9 @@ final class AuthViewModel: ObservableObject {
                 self.token = token
                 keychain.saveToken(token)
                 keychain.saveEmail(email)
+                if let userID = response["user_id"] ?? response["userId"] {
+                    keychain.saveUserID("\(userID)")
+                }
                 authState = .authenticated
             } else if let detail = response["detail"] as? String {
                 errorMessage = detail

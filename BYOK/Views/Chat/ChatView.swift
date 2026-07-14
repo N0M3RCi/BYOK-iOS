@@ -11,6 +11,7 @@ struct ChatView: View {
     @State private var showKnowledgeBasePicker = false
     @State private var showImagePicker = false
     @State private var selectedPhotos: [PhotosPickerItem] = []
+    @FocusState private var isInputFocused: Bool
 
     init(projectID: String? = nil) {
         self.projectID = projectID
@@ -26,63 +27,61 @@ struct ChatView: View {
             VStack(spacing: 0) {
                 // Messages List
                 ScrollViewReader { proxy in
-                    ZStack {
-                        List {
-                            ForEach(viewModel.messages) { message in
-                                MessageBubbleView(message: message)
-                                    .id(message.id)
-                                    .contextMenu {
-                                        if message.role == .user && !message.isStreaming {
-                                            Button("Edit") {
-                                                viewModel.editMessage(id: message.id)
-                                            }
-                                            Button("Copy") {
-                                                UIPasteboard.general.string = message.content
-                                            }
+                    List {
+                        ForEach(viewModel.messages) { message in
+                            MessageBubbleView(message: message)
+                                .id(message.id)
+                                .contextMenu {
+                                    if message.role == .user && !message.isStreaming {
+                                        Button("Edit") {
+                                            viewModel.editMessage(id: message.id)
                                         }
-                                        if message.role == .assistant && !message.isStreaming {
-                                            Button("Feedback") {
-                                                feedbackMessageId = message.id
-                                                showFeedback = true
-                                            }
-                                            Button("Copy") {
-                                                UIPasteboard.general.string = message.content
-                                            }
-                                            Button("Regenerate") {
-                                                viewModel.regenerateLastResponse()
-                                            }
+                                        Button("Copy") {
+                                            UIPasteboard.general.string = message.content
                                         }
                                     }
-                            }
+                                    if message.role == .assistant && !message.isStreaming {
+                                        Button("Feedback") {
+                                            feedbackMessageId = message.id
+                                            showFeedback = true
+                                        }
+                                        Button("Copy") {
+                                            UIPasteboard.general.string = message.content
+                                        }
+                                        Button("Regenerate") {
+                                            viewModel.regenerateLastResponse()
+                                        }
+                                    }
+                                }
                         }
-                        .listStyle(.plain)
-                        .scrollDismissesKeyboard(.never)
-                        .onChange(of: viewModel.messages.count) { _ in
-                            if let last = viewModel.messages.last {
-                                withAnimation { proxy.scrollTo(last.id, anchor: .bottom) }
-                            }
+                    }
+                    .listStyle(.plain)
+                    .onChange(of: viewModel.messages.count) { _ in
+                        if let last = viewModel.messages.last {
+                            withAnimation { proxy.scrollTo(last.id, anchor: .bottom) }
                         }
-
+                    }
+                    .overlay(alignment: .top) {
+                        if let error = viewModel.errorMessage {
+                            HStack {
+                                Text(error)
+                                    .font(.caption)
+                                    .foregroundColor(.red)
+                                Spacer()
+                                Button("X") { viewModel.errorMessage = nil }
+                                    .font(.caption)
+                            }
+                            .padding()
+                            .background(Color.red.opacity(0.1))
+                            .cornerRadius(8)
+                            .padding()
+                        }
+                    }
+                    .overlay {
                         if viewModel.messages.isEmpty && !viewModel.isLoading {
                             emptyChatView
                                 .allowsHitTesting(false)
                         }
-                    }
-                }
-                .overlay(alignment: .top) {
-                    if let error = viewModel.errorMessage {
-                        HStack {
-                            Text(error)
-                                .font(.caption)
-                                .foregroundColor(.red)
-                            Spacer()
-                            Button("X") { viewModel.errorMessage = nil }
-                                .font(.caption)
-                        }
-                        .padding()
-                        .background(Color.red.opacity(0.1))
-                        .cornerRadius(8)
-                        .padding()
                     }
                 }
 
@@ -170,6 +169,7 @@ struct ChatView: View {
                             .padding(10)
                             .background(Color(.systemGray6))
                             .cornerRadius(20)
+                            .focused($isInputFocused)
 
                         if viewModel.isStreaming {
                             Button(action: { viewModel.stopStreaming() }) {
@@ -248,6 +248,9 @@ struct ChatView: View {
         }
         .onAppear {
             viewModel.loadProviders()
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                isInputFocused = true
+            }
         }
     }
 
