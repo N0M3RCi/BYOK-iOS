@@ -39,7 +39,38 @@ final class ChatViewModel: ObservableObject {
                     method: "GET",
                     path: "/providers"
                 )
-                providers = response.items
+                // Merge locally stored API keys and URLs into providers (server may not return them)
+                let keychain = KeychainManager.shared
+                providers = response.items.map { provider in
+                    var p = provider
+                    if p.apiKey == nil || p.apiKey?.isEmpty == true {
+                        if let localKey = keychain.getProviderAPIKey(forProviderId: p.id) {
+                            p = Provider(
+                                id: p.id,
+                                providerName: p.providerName,
+                                modelType: p.modelType,
+                                apiKey: localKey,
+                                endpointUrl: p.endpointUrl,
+                                isValid: p.isValid,
+                                prefer: p.prefer
+                            )
+                        }
+                    }
+                    if p.endpointUrl == nil || p.endpointUrl?.isEmpty == true {
+                        if let localURL = keychain.getProviderURL(forProviderId: p.id) {
+                            p = Provider(
+                                id: p.id,
+                                providerName: p.providerName,
+                                modelType: p.modelType,
+                                apiKey: p.apiKey,
+                                endpointUrl: localURL,
+                                isValid: p.isValid,
+                                prefer: p.prefer
+                            )
+                        }
+                    }
+                    return p
+                }
                 // Auto-select first provider if none selected
                 if selectedProvider == nil, let first = providers.first {
                     selectProvider(first)

@@ -26,62 +26,63 @@ struct ChatView: View {
             VStack(spacing: 0) {
                 // Messages List
                 ScrollViewReader { proxy in
-                    List {
-                        ForEach(viewModel.messages) { message in
-                            MessageBubbleView(message: message)
-                                .id(message.id)
-                                .contextMenu {
-                                    if message.role == .user && !message.isStreaming {
-                                        Button("Edit") {
-                                            viewModel.editMessage(id: message.id)
+                    ZStack {
+                        List {
+                            ForEach(viewModel.messages) { message in
+                                MessageBubbleView(message: message)
+                                    .id(message.id)
+                                    .contextMenu {
+                                        if message.role == .user && !message.isStreaming {
+                                            Button("Edit") {
+                                                viewModel.editMessage(id: message.id)
+                                            }
+                                            Button("Copy") {
+                                                UIPasteboard.general.string = message.content
+                                            }
                                         }
-                                        Button("Copy") {
-                                            UIPasteboard.general.string = message.content
+                                        if message.role == .assistant && !message.isStreaming {
+                                            Button("Feedback") {
+                                                feedbackMessageId = message.id
+                                                showFeedback = true
+                                            }
+                                            Button("Copy") {
+                                                UIPasteboard.general.string = message.content
+                                            }
+                                            Button("Regenerate") {
+                                                viewModel.regenerateLastResponse()
+                                            }
                                         }
                                     }
-                                    if message.role == .assistant && !message.isStreaming {
-                                        Button("Feedback") {
-                                            feedbackMessageId = message.id
-                                            showFeedback = true
-                                        }
-                                        Button("Copy") {
-                                            UIPasteboard.general.string = message.content
-                                        }
-                                        Button("Regenerate") {
-                                            viewModel.regenerateLastResponse()
-                                        }
-                                    }
-                                }
+                            }
                         }
-                    }
-                    .listStyle(.plain)
-                    .onChange(of: viewModel.messages.count) { _ in
-                        if let last = viewModel.messages.last {
-                            withAnimation { proxy.scrollTo(last.id, anchor: .bottom) }
+                        .listStyle(.plain)
+                        .scrollDismissesKeyboard(.never)
+                        .onChange(of: viewModel.messages.count) { _ in
+                            if let last = viewModel.messages.last {
+                                withAnimation { proxy.scrollTo(last.id, anchor: .bottom) }
+                            }
+                        }
+
+                        if viewModel.messages.isEmpty && !viewModel.isLoading {
+                            emptyChatView
+                                .allowsHitTesting(false)
                         }
                     }
                 }
-                .overlay {
-                    if viewModel.messages.isEmpty && !viewModel.isLoading {
-                        emptyChatView
-                            .allowsHitTesting(false)
-                    }
+                .overlay(alignment: .top) {
                     if let error = viewModel.errorMessage {
-                        VStack {
-                            HStack {
-                                Text(error)
-                                    .font(.caption)
-                                    .foregroundColor(.red)
-                                Spacer()
-                                Button("X") { viewModel.errorMessage = nil }
-                                    .font(.caption)
-                            }
-                            .padding()
-                            .background(Color.red.opacity(0.1))
-                            .cornerRadius(8)
-                            .padding()
+                        HStack {
+                            Text(error)
+                                .font(.caption)
+                                .foregroundColor(.red)
                             Spacer()
+                            Button("X") { viewModel.errorMessage = nil }
+                                .font(.caption)
                         }
+                        .padding()
+                        .background(Color.red.opacity(0.1))
+                        .cornerRadius(8)
+                        .padding()
                     }
                 }
 
