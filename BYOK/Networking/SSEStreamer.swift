@@ -5,6 +5,17 @@ final class SSEStreamer: @unchecked Sendable {
     private var sessionTask: URLSessionTask?
     private var continuation: AsyncStream<SSEEvent>.Continuation?
 
+    private let streamingSession: URLSession = {
+        let config = URLSessionConfiguration.default
+        config.requestCachePolicy = .reloadIgnoringLocalAndRemoteCacheData
+        config.urlCache = nil
+        config.timeoutIntervalForRequest = 30
+        config.timeoutIntervalForResource = 60
+        config.httpCookieStorage = nil
+        config.urlCredentialStorage = nil
+        return URLSession(configuration: config)
+    }()
+
     /// Starts an SSE stream and returns an AsyncStream of parsed events.
     func streamChat(
         request: ChatRequest,
@@ -12,11 +23,14 @@ final class SSEStreamer: @unchecked Sendable {
         sessionID: String,
         userID: String
     ) -> AsyncStream<SSEEvent> {
-        return AsyncStream { [weak self] continuation in
-            guard let self = self else { return }
+        return AsyncStream { continuation in
             self.continuation = continuation
 
-            Task {
+            Task(priority: .userInitiated) { [weak self] in
+                guard let self = self else {
+                    continuation.finish()
+                    return
+                }
                 do {
                     let url = URL(string: "\(APIConfig.shared.brainServiceURL)/chat")!
                     var urlRequest = URLRequest(url: url)
@@ -28,9 +42,10 @@ final class SSEStreamer: @unchecked Sendable {
                     urlRequest.setValue(sessionID, forHTTPHeaderField: "X-Session-ID")
                     urlRequest.setValue(userID, forHTTPHeaderField: "X-User-ID")
                     urlRequest.httpBody = try JSONEncoder().encode(request)
-                    urlRequest.timeoutInterval = 3600 // 60 minutes
+                    urlRequest.timeoutInterval = 30
+                    urlRequest.cachePolicy = .reloadIgnoringLocalAndRemoteCacheData
 
-                    let (bytes, response) = try await URLSession.shared.bytes(for: urlRequest)
+                    let (bytes, response) = try await streamingSession.bytes(for: urlRequest)
 
                     guard let httpResponse = response as? HTTPURLResponse,
                           (200...299).contains(httpResponse.statusCode) else {
@@ -51,30 +66,38 @@ final class SSEStreamer: @unchecked Sendable {
                             )
                         ))
                         continuation.finish()
+                        self.continuation = nil
                         return
                     }
 
                     var currentEvent = ""
-                    for try await line in bytes.lines {
-                        if line.hasPrefix("data: ") {
-                            currentEvent = String(line.dropFirst(6))
-                        } else if line.hasPrefix(":") {
-                            // Heartbeat - skip
-                            continue
-                        } else if line.isEmpty && !currentEvent.isEmpty {
-                            // End of event - parse
-                            if let data = currentEvent.data(using: .utf8),
-                               let event = try? JSONDecoder().decode(SSEEvent.self, from: data) {
-                                continuation.yield(event)
-                                if event.step == "end" || event.step == "error" {
-                                    continuation.finish()
-                                    return
+                    var lineBuffer = ""
+                    for try await byte in bytes {
+                        if byte == UInt8(ascii: "\n") {
+                            let line = lineBuffer
+                            lineBuffer = ""
+                            if line.hasPrefix("data: ") {
+                                currentEvent = String(line.dropFirst(6))
+                            } else if line.hasPrefix(":") {
+                                continue
+                            } else if line.isEmpty && !currentEvent.isEmpty {
+                                if let data = currentEvent.data(using: .utf8),
+                                   let event = try? JSONDecoder().decode(SSEEvent.self, from: data) {
+                                    continuation.yield(event)
+                                    if event.step == "end" || event.step == "error" {
+                                        continuation.finish()
+                                        self.continuation = nil
+                                        return
+                                    }
                                 }
+                                currentEvent = ""
                             }
-                            currentEvent = ""
+                        } else {
+                            lineBuffer.append(Character(UnicodeScalar(byte)))
                         }
                     }
                     continuation.finish()
+                    self.continuation = nil
                 } catch {
                     let errorMessage = error.localizedDescription
                     continuation.yield(SSEEvent(
@@ -86,6 +109,7 @@ final class SSEStreamer: @unchecked Sendable {
                         )
                     ))
                     continuation.finish()
+                    self.continuation = nil
                 }
             }
         }
