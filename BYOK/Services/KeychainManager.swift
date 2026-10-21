@@ -74,8 +74,22 @@ final class KeychainManager: @unchecked Sendable {
     private func providerAPIKeyKey(_ id: Int) -> String { "com.byok.provider.\(id).api_key" }
     private func providerURLKey(_ id: Int) -> String { "com.byok.provider.\(id).api_url" }
 
+    private let providerIndexKey = "com.byok.provider.ids"
+
     func saveProviderAPIKey(_ key: String, forProviderId id: Int) {
         save(key: providerAPIKeyKey(id), data: Data(key.utf8))
+        var ids = providerIds()
+        if !ids.contains(id) {
+            ids.append(id)
+            let encoded = ids.map(String.init).joined(separator: ",")
+            save(key: providerIndexKey, data: Data(encoded.utf8))
+        }
+    }
+
+    private func providerIds() -> [Int] {
+        guard let data = read(key: providerIndexKey),
+              let raw = String(data: data, encoding: .utf8) else { return [] }
+        return raw.split(separator: ",").compactMap { Int($0) }
     }
 
     func getProviderAPIKey(forProviderId id: Int) -> String? {
@@ -100,8 +114,11 @@ final class KeychainManager: @unchecked Sendable {
     // MARK: - Clear All
 
     func clearAll() {
+        let extra = [passcodeKey, providerIndexKey] + providerIds().flatMap { id in
+            [providerAPIKeyKey(id), providerURLKey(id)]
+        }
         queue.sync {
-            [tokenKey, userIDKey, emailKey, sessionIDKey].forEach { key in
+            ([tokenKey, userIDKey, emailKey, sessionIDKey] + extra).forEach { key in
                 let query: [String: Any] = [
                     kSecClass as String: kSecClassGenericPassword,
                     kSecAttrAccount as String: key

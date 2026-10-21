@@ -37,4 +37,4 @@ targets:
         UIRequiredDeviceCapabilities:
           - arm64
         NSFaceIDUsageDescription: "M3RCI uses Face ID to unlock the app securely."
-            dependencies: []
+    dependencies: []

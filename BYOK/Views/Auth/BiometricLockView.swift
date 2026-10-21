@@ -62,7 +62,8 @@ struct BiometricLockView: View {
 
     private func authenticate() {
         guard BiometricService.shared.isAvailable() else {
-            onUnlock?()
+            showError = true
+            errorMessage = "Face ID is not available on this device."
             return
         }
         Task {

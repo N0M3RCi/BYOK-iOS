@@ -41,7 +41,7 @@ struct HistoryDetailView: View {
         NavigationStack {
             Group {
                 if messages.isEmpty {
-                    VStack { ProgressView(); Text("Loading...").foregroundColor(.secondary) }
+                    Text("No saved text for this conversation.").foregroundColor(.secondary).padding()
                 } else {
                     List(messages) { msg in
                         VStack(alignment: .leading) {
@@ -77,11 +77,14 @@ struct HistoryDetailView: View {
                 }
             }
             .onAppear {
-                Task {
-                    do {
-                        let _: EmptyResponse = try await APIClient.shared.apiRequest(method: "GET", path: "/chat/history/\(item.id)")
-                    } catch {}
+                var loaded: [ChatMessage] = []
+                if let question = item.question, !question.isEmpty {
+                    loaded.append(ChatMessage(id: "q-\(item.id)", role: .user, content: question, timestamp: Date(), reasoning: nil, toolCalls: nil, isStreaming: false, taskExecutions: nil))
                 }
+                if let summary = item.summary, !summary.isEmpty {
+                    loaded.append(ChatMessage(id: "s-\(item.id)", role: .assistant, content: summary, timestamp: Date(), reasoning: nil, toolCalls: nil, isStreaming: false, taskExecutions: nil))
+                }
+                messages = loaded
             }
         }
     }

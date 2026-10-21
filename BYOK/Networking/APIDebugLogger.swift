@@ -36,11 +36,24 @@ final class APIDebugLogger: ObservableObject, @unchecked Sendable {
             responseBody: String(responseBody.prefix(500)),
             error: error
         )
+        #if DEBUG
+        let stored = entry
+        print("[API] \(method) \(path) → \(statusCode): \(responseBody.prefix(200))")
+        #else
+        let stored = LogEntry(
+            timestamp: entry.timestamp,
+            method: method,
+            url: path,
+            requestBody: "",
+            statusCode: statusCode,
+            responseBody: "",
+            error: error
+        )
+        #endif
         lock.lock()
-        entries.append(entry)
+        entries.append(stored)
         entries = Array(entries.suffix(50))
         lock.unlock()
-        print("[API] \(method) \(path) → \(statusCode): \(responseBody.prefix(200))")
     }
 
     func clear() {
