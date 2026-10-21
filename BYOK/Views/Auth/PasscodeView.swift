@@ -18,6 +18,7 @@ struct PasscodeGateView: View {
     @State private var adminPassword = ""
     @State private var registeredPasscode: String?
     @State private var localError: String?
+    @FocusState private var focusedField: String?
 
     var body: some View {
         VStack(spacing: 0) {

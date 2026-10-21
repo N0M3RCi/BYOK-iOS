@@ -263,12 +263,43 @@ struct HistoryItem: Codable, Identifiable, Equatable {
     let projectId: String?
     let title: String?
     let createdAt: String
+    let question: String?
+    let summary: String?
 
     enum CodingKeys: String, CodingKey {
         case id
         case projectId = "project_id"
         case title
+        case projectName = "project_name"
+        case question
+        case summary
         case createdAt = "created_at"
+    }
+
+    init(from decoder: Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        if let numeric = try? values.decode(Int.self, forKey: .id) {
+            id = String(numeric)
+        } else {
+            id = try values.decode(String.self, forKey: .id)
+        }
+        projectId = try values.decodeIfPresent(String.self, forKey: .projectId)
+        let named = try values.decodeIfPresent(String.self, forKey: .title)
+        let projectName = try values.decodeIfPresent(String.self, forKey: .projectName)
+        question = try values.decodeIfPresent(String.self, forKey: .question)
+        summary = try values.decodeIfPresent(String.self, forKey: .summary)
+        title = named ?? projectName ?? question
+        createdAt = try values.decodeIfPresent(String.self, forKey: .createdAt) ?? ""
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var values = encoder.container(keyedBy: CodingKeys.self)
+        try values.encode(id, forKey: .id)
+        try values.encodeIfPresent(projectId, forKey: .projectId)
+        try values.encodeIfPresent(title, forKey: .title)
+        try values.encodeIfPresent(question, forKey: .question)
+        try values.encodeIfPresent(summary, forKey: .summary)
+        try values.encode(createdAt, forKey: .createdAt)
     }
 }
 
